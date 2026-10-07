@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Binary & IPA Patcher Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ============================================
+           ROOT DESIGN TOKENS
+           ============================================ */
+        :root {
+            --bg-base: #06080f;
+            --bg-surface: #0c1021;
+            --bg-elevated: #131830;
+            --bg-overlay: rgba(12, 16, 33, 0.85);
+            --border-subtle: rgba(99, 117, 171, 0.15);
+            --border-default: rgba(99, 117, 171, 0.25);
+            --border-focus: #5b7cf7;
+
+            --accent: #5b7cf7;
+            --accent-hover: #4a6ae5;
+            --accent-glow: rgba(91, 124, 247, 0.25);
+            --success: #34d399;
+            --success-dim: rgba(52, 211, 153, 0.15);
+            --danger: #f87171;
+            --danger-dim: rgba(248, 113, 113, 0.15);
+            --warning: #fbbf24;
+            --warning-dim: rgba(251, 191, 36, 0.15);
+            --purple: #a78bfa;
+            --purple-dim: rgba(167, 139, 250, 0.15);
+
+            --text-primary: #e8ecf4;
+            --text-secondary: #8896b8;
+            --text-muted: #5a6a8a;
+            --text-inverse: #06080f;
+
+            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 20px;
+
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+            --shadow-glow: 0 0 24px var(--accent-glow);
+
+            --transition-fast: 150ms ease;
+            --transition-normal: 250ms ease;
+        }
+
+        /* ============================================
+           RESET & BASE
+           ============================================ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(91, 124, 247, 0.08), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(167, 139, 250, 0.05), transparent);
+        }
+
+        /* ============================================
+           LAYOUT
+           ============================================ */
+        .app-container {
+            width: 100%;
+            max-width: 1060px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .app-header h1 { font-size: 1.4rem !important; }
+            .tab-btn { font-size: 0.78rem !important; padding: 0.6rem 0.5rem !important; }
+        }
+
+        /* ============================================
+           HEADER
+           ============================================ */
+        .app-header {
+            text-align: center;
+            padding: 1.5rem 0 1.25rem;
+            position: relative;
+        }
+        .app-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 10%;
+            right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-default), transparent);
+        }
+        .app-header .logo-icon {
+            font-size: 2.2rem;
+            margin-bottom: 0.3rem;
+            display: block;
+            filter: drop-shadow(0 0 12px var(--accent-glow));
+        }
+        .app-header h1 {
+            font-size: 1.7rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #7fa0ff, #a78bfa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.3px;
+        }
+        .app-header p {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-top: 0.35rem;
+            font-weight: 500;
+        }
+
+        /* ============================================
+           TAB NAVIGATION
+           ============================================ */
+        .tab-nav {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 4px;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 0;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 0.7rem 0.6rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+            position: relative;
+        }
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(91, 124, 247, 0.08);
+        }
+        .tab-btn.active {
+            color: #fff;
+            background: var(--accent);
+            box-shadow: 0 2px 12px var(--accent-glow);
+        }
+        .tab-btn .tab-num {
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.15);
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .tab-btn.active .tab-num {
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* ============================================
+           TAB CONTENT
+           ============================================ */
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            gap: 1.25rem;
+            animation: fadeSlideIn 0.3s ease;
+        }
+        .tab-content.active { display: flex; }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================
+           CARDS
+           ============================================ */
+        .card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-sm);
+            transition: border-color var(--transition-normal);
+        }
+        .card:hover { border-color: var(--border-default); }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+        }
+        .card-title .icon {
+            font-size: 1.1rem;
+        }
+
+        /* Info Banner */
+        .info-banner {
+            background: rgba(91, 124, 247, 0.06);
+            border: 1px solid rgba(91, 124, 247, 0.2);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .info-banner strong { color: var(--accent); }
+        .info-banner.purple {
+            background: var(--purple-dim);
+            border-color: rgba(167, 139, 250, 0.25);
+        }
+        .info-banner.purple strong { color: var(--purple); }
+
+        /* ============================================
+           DROP ZONE
+           ============================================ */
+        .drop-zone {
+            border: 2px dashed var(--border-default);
+            border-radius: var(--radius-md);
+            padding: 2rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            background: rgba(6, 8, 15, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, var(--accent-glow), transparent 70%);
+            opacity: 0;
+            transition: opacity var(--transition-normal);
+        }
+        .drop-zone:hover::before,
+        .drop-zone.dragover::before { opacity: 1; }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+        .drop-zone .dz-icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.6; }
+        .drop-zone .dz-text { color: var(--text-secondary); font-size: 0.9rem; position: relative; z-index: 1; }
+        .drop-zone .dz-text strong { color: var(--accent); }
+        .drop-zone input[type="file"] { display: none; }
+
+        .file-info {
+            margin-top: 0.75rem;
+            padding: 0.65rem 1rem;
+            background: var(--success-dim);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            color: var(--success);
+            font-weight: 500;
+            display: none;
+            word-break: break-all;
+        }
+
+        /* ============================================
+           FORM ELEMENTS
+           ============================================ */
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: #7fa0ff;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.85rem;
+            resize: vertical;
+            line-height: 1.65;
+            transition: border-color var(--transition-fast);
+        }
+        textarea:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+        textarea[readonly] { color: var(--text-secondary); cursor: default; }
+
+        .input-text {
+            width: 100%;
+            background: var(--bg-base);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            padding: 0.65rem 0.85rem;
+            font-size: 0.9rem;
+            transition: border-color var(--transition-fast);
+        }
+        .input-text:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+        select {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            padding: 0.4rem 0.6rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-family: var(--font-sans);
+            cursor: pointer;
+        }
+        select:focus { outline: none; border-color: var(--border-focus); }
+
+        label { font-size: 0.88rem; color: var(--text-secondary); font-weight: 500; }
+        .field-group { display: flex; flex-direction: column; gap: 0.4rem; }
+
+        /* Safe Mode Panel */
+        .safe-mode-panel {
+            margin-top: 1rem;
+            background: rgba(6, 8, 15, 0.5);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .safe-mode-panel .lock-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--success);
+            font-weight: 600;
+        }
+        .safe-mode-panel .sub-option {
+            margin-left: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
+        .btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 0.85rem 1.5rem;
+            font-family: var(--font-sans);
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            letter-spacing: 0.2px;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent);
+            pointer-events: none;
+        }
+        .btn:hover:not(:disabled) {
+            background: var(--accent-hover);
+            box-shadow: var(--shadow-glow);
+            transform: translateY(-1px);
+        }
+        .btn:active:not(:disabled) { transform: translateY(0); }
+        .btn:disabled {
+            background: var(--bg-surface);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            border: 1px solid var(--border-subtle);
+        }
+        .btn:disabled::after { display: none; }
+
+        .btn-warning { background: var(--warning); color: var(--text-inverse); }
+        .btn-warning:hover:not(:disabled) { background: #e5a911; box-shadow: 0 0 24px rgba(251, 191, 36, 0.25); }
+
+        .btn-analyze { background: linear-gradient(135deg, #f59e0b, #f97316); color: var(--text-inverse); }
+        .btn-analyze:hover:not(:disabled) { box-shadow: 0 0 24px rgba(249, 115, 22, 0.3); }
+
+        .btn-secondary {
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+            padding: 0.55rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            width: auto;
+        }
+        .btn-secondary::after { display: none; }
+        .btn-secondary:hover { background: rgba(91, 124, 247, 0.1); color: var(--accent); border-color: rgba(91, 124, 247, 0.3); }
+
+        .example-btn {
+            background: none;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.35rem 0.75rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .example-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(91, 124, 247, 0.05); }
+
+        .actions-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* ============================================
+           PROGRESS BAR
+           ============================================ */
+        .progress-container {
+            display: none;
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .progress-header .label { color: var(--accent); }
+        .progress-header .percent { color: var(--success); font-family: var(--font-mono); }
+        .progress-track {
+            width: 100%;
+            background: var(--bg-base);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+        }
+        .progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--success));
+            border-radius: 4px;
+            transition: width 0.15s ease;
+        }
+
+        /* ============================================
+           CONSOLE / LOG
+           ============================================ */
+        .console {
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 0.25rem 0;
+        }
+        .console::-webkit-scrollbar { width: 5px; }
+        .console::-webkit-scrollbar-track { background: transparent; }
+        .console::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
+
+        .log-item {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: var(--radius-sm);
+            line-height: 1.5;
+            word-break: break-all;
+        }
+        .log-info { color: var(--text-secondary); background: rgba(91, 124, 247, 0.04); }
+        .log-success { color: var(--success); background: var(--success-dim); }
+        .log-error { color: var(--danger); background: var(--danger-dim); }
+        .log-warn { color: var(--warning); background: var(--warning-dim); }
+
+        /* ============================================
+           DATA TABLES
+           ============================================ */
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.83rem;
+        }
+        .data-table th {
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+            padding: 0.7rem 0.85rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 0;
+        }
+        .data-table td {
+            padding: 0.6rem 0.85rem;
+            border-bottom: 1px solid rgba(99, 117, 171, 0.08);
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+        }
+        .data-table tbody tr:hover { background: rgba(91, 124, 247, 0.04); }
+        .data-table tbody tr:last-child td { border-bottom: none; }
+
+        /* ============================================
+           BADGES
+           ============================================ */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            font-family: var(--font-sans);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .badge-orig { background: rgba(99, 117, 171, 0.2); color: var(--text-secondary); }
+        .badge-mod { background: var(--accent-glow); color: #93b4ff; }
+        .badge-added { background: var(--success-dim); color: var(--success); }
+        .badge-removed { background: var(--danger-dim); color: var(--danger); }
+        .badge-modified { background: var(--warning-dim); color: var(--warning); }
+        .badge-core { background: rgba(91, 124, 247, 0.2); color: #7fa0ff; }
+        .badge-config { background: var(--warning-dim); color: var(--warning); }
+        .badge-media { background: var(--success-dim); color: var(--success); }
+        .badge-data { background: rgba(99, 117, 171, 0.15); color: var(--text-muted); }
+        .badge-risk { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(248, 113, 113, 0.3); }
+        .badge-found { background: var(--purple-dim); color: var(--purple); }
+
+        /* ============================================
+           STATS DASHBOARD
+           ============================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+        }
+        @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+        .stat-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            text-align: center;
+        }
+        .stat-card .stat-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            font-family: var(--font-mono);
+            margin-top: 0.25rem;
+        }
+        .stat-card .stat-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ============================================
+           TOAST NOTIFICATION
+           ============================================ */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--success);
+            color: var(--success);
+            padding: 0.7rem 1.4rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(52, 211, 153, 0.15);
+            display: none;
+            z-index: 9999;
+            animation: toastIn 0.3s ease;
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ============================================
+           SUSPICIOUS LIST
+           ============================================ */
+        .suspicious-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .suspicious-list li {
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            border-left: 3px solid var(--danger);
+            background: var(--danger-dim);
+        }
+        .suspicious-list li.clean {
+            border-left-color: var(--success);
+            background: var(--success-dim);
+            color: var(--success);
+        }
+        .suspicious-list .file-name { color: var(--danger); font-weight: 600; }
+        .suspicious-list .file-path { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+        /* Checkbox custom */
+        input[type="checkbox"] {
+            accent-color: var(--success);
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+    <!-- ==================== HEADER ==================== -->
+    <header class="app-header">
+        <span class="logo-icon">⚙️</span>
+        <h1>Universal Binary & IPA Patcher</h1>
+        <p>Vá Hex · Leak Offset · So Sánh Cấu Trúc · Truy Vết Text · Phân Tích Sâu</p>
+    </header>
+
+    <!-- ==================== TAB NAV ==================== -->
+    <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="patcher">
+            <span class="tab-num">1</span> Vá Hex
+        </button>
+        <button class="tab-btn" data-tab="diff">
+            <span class="tab-num">2</span> Leak Offset
+        </button>
+        <button class="tab-btn" data-tab="ipa">
+            <span class="tab-num">3</span> So Sánh ZIP
+        </button>
+        <button class="tab-btn" data-tab="search">
+            <span class="tab-num">4</span> Truy Vết
+        </button>
+        <button class="tab-btn" data-tab="analyzer">
+            <span class="tab-num">5</span> Phân Tích
+        </button>
+    </nav>
+
+    <!-- ==================== TAB 1: HEX PATCHER ==================== -->
+    <section class="tab-content active" id="tab-patcher">
+        <div class="card">
+            <div class="card-title"><span class="icon">📂</span> Chọn File Binary</div>
+            <div class="drop-zone" id="dz-patch">
+                <span class="dz-icon">⬆️</span>
+                <p class="dz-text">Kéo & thả file hoặc <strong>Nhấp để chọn</strong></p>
+                <input type="file" id="fi-patch">
+            </div>
+            <div class="file-info" id="info-patch"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title" style="justify-content: space-between;">
+                <span><span class="icon">📝</span> Nhập Offset & Mã Hex</span>
+                <button class="example-btn" id="btnLoadExample">Tải Mẫu</button>
+            </div>
+            <textarea id="patchInput" placeholder="Ví dụ:&#10;0x554b9ec: 200080D2 C0035FD6 // Comment...&#10;0x1234: 00 01 02 03"></textarea>
+        </div>
+
+        <button class="btn" id="patchBtn" disabled>🚀 Bắt Đầu Patch & Tải File Về</button>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
+            <div class="console" id="log-patch">
+                <div class="log-item log-info">[Hệ thống] Sẵn sàng vá file Hex.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 2: LEAK OFFSET ==================== -->
+    <section class="tab-content" id="tab-diff">
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title"><span class="icon">📄</span> File Gốc (Original)</div>
+                <div class="drop-zone" id="dz-orig">
+                    <span class="dz-icon">📁</span>
+                    <p class="dz-text">Chọn <strong>file gốc</strong></p>
+                    <input type="file" id="fi-orig">
+                </div>
+                <div class="file-info" id="info-orig"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="icon">✏️</span> File Đã Sửa (Modded)</div>
+                <div class="drop-zone" id="dz-mod">
+                    <span class="dz-icon">📁</span>
+                    <p class="dz-text">Chọn <strong>file mod</strong></p>
+                    <input type="file" id="fi-mod">
+                </div>
+                <div class="file-info" id="info-mod"></div>
+            </div>
+        </div>
+
+        <div class="card progress-container" id="diffProgress">
+            <div class="progress-header">
+                <span class="label" id="diffProgressLabel">Đang quét...</span>
+                <span class="percent" id="diffProgressPercent">0%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" id="diffProgressBar"></div>
+            </div>
+        </div>
+
+        <button class="btn" id="diffBtn" disabled>🔍 Bắt Đầu Quét & Leak Offset</button>
+
+        <div class="card" id="diffResultCard" style="display: none;">
+            <div class="card-title" style="justify-content: space-between;">
+                <span><span class="icon">📊</span> Kết Quả Leak Offset</span>
+                <span id="diffStatsBadge" style="font-size: 0.85rem; color: var(--success); font-weight: 700;"></span>
+            </div>
+            <div class="actions-bar">
+                <button class="btn-secondary" id="btnCopyLeak">📋 Copy Patch</button>
+                <button class="btn-secondary" id="btnSendToPatcher">➡️ Chuyển sang Vá Hex</button>
+            </div>
+            <textarea id="leakedTextarea" readonly style="height: 140px; margin-bottom: 1rem;"></textarea>
+            <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>#</th><th>Offset</th><th>Gốc</th><th>Đã Sửa</th></tr></thead>
+                    <tbody id="diffTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
+            <div class="console" id="log-diff"></div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 3: ZIP/IPA COMPARE ==================== -->
+    <section class="tab-content" id="tab-ipa">
+        <div class="info-banner">
+            💡 So sánh cấu trúc file nén (<strong>.ipa</strong>, <strong>.apk</strong>, <strong>.zip</strong>). Báo cáo chính xác file nào được thêm, xóa hay sửa đổi.
+        </div>
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-title"><span class="icon">📦</span> File Gốc</div>
+                <div class="drop-zone" id="dz-ipa-orig">
+                    <span class="dz-icon">📁</span>
+                    <p class="dz-text">Chọn file gốc</p>
+                    <input type="file" id="fi-ipa-orig">
+                </div>
+                <div class="file-info" id="info-ipa-orig"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="icon">📦</span> File Mod</div>
+                <div class="drop-zone" id="dz-ipa-mod">
+                    <span class="dz-icon">📁</span>
+                    <p class="dz-text">Chọn file mod</p>
+                    <input type="file" id="fi-ipa-mod">
+                </div>
+                <div class="file-info" id="info-ipa-mod"></div>
+            </div>
+        </div>
+
+        <button class="btn" id="ipaDiffBtn" disabled>📦 So Sánh Cấu Trúc File Nén</button>
+
+        <div class="card" id="ipaResultCard" style="display: none;">
+            <div class="card-title" style="justify-content: space-between;">
+                <span><span class="icon">📊</span> Báo Cáo Thay Đổi</span>
+                <span id="ipaStatsBadge" style="font-size: 0.85rem; color: var(--success); font-weight: 700;"></span>
+            </div>
+            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>#</th><th>Trạng Thái</th><th>Tên File</th><th>KT Gốc</th><th>KT Mod</th></tr></thead>
+                    <tbody id="ipaTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
+            <div class="console" id="log-ipa"></div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 4: SEARCH & REPLACE ==================== -->
+    <section class="tab-content" id="tab-search">
+        <div class="info-banner purple">
+            <strong>🕵️ TRUY VẾT & CHỈNH SỬA (HEX SEARCH & REPLACE)</strong><br>
+            Bảo toàn 100% cấu trúc Hex gốc. Chỉ thay đổi đúng vị trí yêu cầu. Chống Crash tuyệt đối.
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📂</span> Chọn File Cần Truy Vết</div>
+            <div class="drop-zone" id="dz-search">
+                <span class="dz-icon">🔎</span>
+                <p class="dz-text">Kéo & thả file hoặc <strong>Nhấp để chọn</strong> (IPA, APK, ZIP hoặc file lẻ)</p>
+                <input type="file" id="fi-search">
+            </div>
+            <div class="file-info" id="info-search"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">⚙️</span> Thiết Lập Truy Vết</div>
+            <div class="grid-2">
+                <div class="field-group">
+                    <label>🔍 Chuỗi cần tìm</label>
+                    <input type="text" id="searchInput" class="input-text" placeholder="Nhập text cần tìm...">
+                </div>
+                <div class="field-group">
+                    <label>✏️ Thay thế bằng (tuỳ chọn)</label>
+                    <input type="text" id="replaceInput" class="input-text" placeholder="Để trống nếu chỉ tìm kiếm...">
+                </div>
+            </div>
+            <div class="safe-mode-panel">
+                <div class="lock-label">
+                    <input type="checkbox" checked disabled>
+                    <span>🔒 Khóa Dung Lượng (Safe Mode Bắt Buộc)</span>
+                </div>
+                <div class="sub-option">
+                    <label style="font-size: 0.85rem;">Phương pháp bù byte:</label>
+                    <select id="padMethod">
+                        <option value="null">Null Bytes (0x00)</option>
+                        <option value="space">Khoảng trắng (0x20)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <button class="btn" id="btnOnlySearch" disabled>🔍 Chỉ Truy Vết</button>
+            <button class="btn btn-warning" id="btnReplaceExport" disabled>⚡ Thay Thế & Xuất File</button>
+        </div>
+
+        <div class="card" id="searchResultCard" style="display: none;">
+            <div class="card-title" style="justify-content: space-between;">
+                <span><span class="icon">📊</span> Kết Quả Truy Vết</span>
+                <span id="searchStatsBadge" style="font-size: 0.85rem; color: var(--purple); font-weight: 700;"></span>
+            </div>
+            <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>#</th><th>Nằm Trong File</th><th>Offset</th><th>Trạng Thái</th></tr></thead>
+                    <tbody id="searchTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
+            <div class="console" id="log-search"></div>
+        </div>
+    </section>
+
+    <!-- ==================== TAB 5: DEEP ANALYZER ==================== -->
+    <section class="tab-content" id="tab-analyzer">
+        <div class="card">
+            <div class="card-title"><span class="icon">📂</span> Chọn File (IPA / APK / ZIP)</div>
+            <div class="drop-zone" id="dz-analyzer">
+                <span class="dz-icon">🛡️</span>
+                <p class="dz-text">Kéo & thả file hoặc <strong>Nhấp để chọn</strong></p>
+                <input type="file" id="fi-analyzer">
+            </div>
+            <div class="file-info" id="info-analyzer"></div>
+        </div>
+
+        <button class="btn btn-analyze" id="btnAnalyze" disabled>🚀 Bắt Đầu Phân Tích Sâu</button>
+
+        <div id="analyzerDashboard" style="display: none; flex-direction: column; gap: 1rem;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Tổng File</div>
+                    <div class="stat-value" id="anaTotalFiles" style="color: var(--accent);">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">File Core</div>
+                    <div class="stat-value" id="anaCoreFiles" style="color: #7fa0ff;">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Config</div>
+                    <div class="stat-value" id="anaConfigFiles" style="color: var(--warning);">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Media</div>
+                    <div class="stat-value" id="anaMediaFiles" style="color: var(--success);">0</div>
+                </div>
+            </div>
+
+            <div class="card" style="border-color: rgba(248, 113, 113, 0.3);">
+                <div class="card-title" style="color: var(--danger);">⚠️ Cảnh Báo Hệ Thống</div>
+                <ul class="suspicious-list" id="suspiciousList"></ul>
+            </div>
+
+            <div class="table-container" style="max-height: 450px; overflow-y: auto;">
+                <table class="data-table">
+                    <thead><tr><th>Loại</th><th>Đường Dẫn</th><th>Kích Thước</th><th>Đánh Giá</th></tr></thead>
+                    <tbody id="analyzerTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
+            <div class="console" id="log-analyzer"></div>
+        </div>
+    </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ================================================================
+     APPLICATION LOGIC — Wrapped in IIFE to avoid global pollution
+     ================================================================ -->
+<script>
+(function() {
+    'use strict';
+
+    // ==========================================
+    // UTILITIES
+    // ==========================================
+
+    /** Escape HTML to prevent XSS */
+    function esc(str) {
+        const el = document.createElement('span');
+        el.textContent = str;
+        return el.innerHTML;
+    }
+
+    /** Format file size */
+    function fmtSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(2) + ' MB';
+    }
+
+    /** Show toast notification */
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 2200);
+    }
+
+    /** Download a Blob */
+    function downloadBlob(blob, name) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url); // Prevent memory leak
+    }
+
+    /** Add log entry to console */
+    function log(consoleId, msg, type = 'info') {
+        const con = document.getElementById(consoleId);
+        if (!con) return;
+        const d = document.createElement('div');
+        d.className = 'log-item log-' + type;
+        d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        con.appendChild(d);
+        con.scrollTop = con.scrollHeight;
+    }
+
+    /** Parse hex bytes from string like "200080D2 C0035FD6" */
+    function parseHexBytes(hexStr) {
+        const clean = hexStr.replace(/[^0-9a-fA-F]/g, '');
+        if (clean.length % 2 !== 0) throw new Error('Số ký tự hex không hợp lệ (phải chẵn)');
+        const bytes = new Uint8Array(clean.length / 2);
+        for (let i = 0; i < clean.length; i += 2) {
+            bytes[i / 2] = parseInt(clean.substr(i, 2), 16);
+        }
+        return bytes;
+    }
+
+    /** Boyer-Moore-Horspool-ish byte search */
+    function findAllOccurrences(source, pattern) {
+        const results = [];
+        if (!pattern.length || source.length < pattern.length) return results;
+        const last = pattern.length - 1;
+        // Build bad-character table
+        const skip = new Int32Array(256).fill(pattern.length);
+        for (let i = 0; i < last; i++) skip[pattern[i]] = last - i;
+
+        let i = 0;
+        while (i <= source.length - pattern.length) {
+            let j = last;
+            while (j >= 0 && source[i + j] === pattern[j]) j--;
+            if (j < 0) {
+                results.push(i);
+                i += pattern.length; // non-overlapping
+            } else {
+                i += Math.max(1, skip[source[i + last]]);
+            }
+        }
+        return results;
+    }
+
+    /** Read file as ArrayBuffer, returns Promise */
+    function readAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result);
+            r.onerror = () => reject(new Error('Không thể đọc file: ' + file.name));
+            r.readAsArrayBuffer(file);
+        });
+    }
+
+    /** Read a file slice as Uint8Array, returns Promise */
+    function readSlice(file, start, end) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(new Uint8Array(r.result));
+            r.onerror = () => reject(new Error('Lỗi đọc slice'));
+            r.readAsArrayBuffer(file.slice(start, end));
+        });
+    }
+
+    // ==========================================
+    // DROP ZONE SETUP (generic reusable)
+    // ==========================================
+    function setupDropZone(dzId, inputId, infoId, callback) {
+        const dz = document.getElementById(dzId);
+        const fi = document.getElementById(inputId);
+        const info = document.getElementById(infoId);
+        if (!dz || !fi || !info) return;
+
+        dz.addEventListener('click', () => fi.click());
+        dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+        dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+        dz.addEventListener('drop', e => {
+            e.preventDefault();
+            dz.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+        });
+        fi.addEventListener('change', e => {
+            if (e.target.files[0]) handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            info.style.display = 'block';
+            info.textContent = '✓ ' + file.name + ' (' + fmtSize(file.size) + ')';
+            callback(file);
+        }
+    }
+
+    // ==========================================
+    // TAB NAVIGATION
+    // ==========================================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            // Deactivate all
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => {
+                c.classList.remove('active');
+                c.style.display = 'none';
+            });
+            // Activate target
+            btn.classList.add('active');
+            const target = document.getElementById('tab-' + tab);
+            if (target) {
+                target.classList.add('active');
+                target.style.display = 'flex';
+            }
+        });
+    });
+
+    // ==========================================
+    // TAB 1: HEX PATCHER
+    // ==========================================
+    let patchFile = null, patchBuffer = null;
+
+    setupDropZone('dz-patch', 'fi-patch', 'info-patch', async (file) => {
+        patchFile = file;
+        try {
+            patchBuffer = await readAsArrayBuffer(file);
+            document.getElementById('patchBtn').disabled = false;
+            log('log-patch', 'Đã nạp file "' + file.name + '" (' + fmtSize(file.size) + ') vào RAM!', 'success');
+        } catch (e) {
+            log('log-patch', e.message, 'error');
+        }
+    });
+
+    document.getElementById('btnLoadExample').addEventListener('click', () => {
+        document.getElementById('patchInput').value =
+            '0x554b9ec: 200080D2 C0035FD6 // Ví dụ: return 1\n0x1000: 00 01 02 03 // Ghi 4 byte';
+    });
+
+    document.getElementById('patchBtn').addEventListener('click', () => {
+        if (!patchBuffer) return;
+        const input = document.getElementById('patchInput').value;
+        const buf = new Uint8Array(patchBuffer.slice(0));
+        let patchCount = 0, errorCount = 0;
+
+        input.split('\n').forEach((rawLine, lineNum) => {
+            const line = rawLine.split('//')[0].trim();
+            if (!line) return;
+            try {
+                const parts = line.split(/[:\s]+/).filter(Boolean);
+                if (parts.length < 2) throw new Error('Thiếu dữ liệu hex');
+                const offset = parseInt(parts[0], 16);
+                if (isNaN(offset)) throw new Error('Offset không hợp lệ');
+                const bytes = parseHexBytes(parts.slice(1).join(''));
+
+                // Bounds check
+                if (offset < 0 || offset + bytes.length > buf.length) {
+                    throw new Error('Offset 0x' + offset.toString(16) + ' + ' + bytes.length + ' bytes vượt ngoài file (size: ' + buf.length + ')');
+                }
+
+                for (let i = 0; i < bytes.length; i++) buf[offset + i] = bytes[i];
+                patchCount++;
+                log('log-patch', '✓ Patch OK tại 0x' + offset.toString(16).toUpperCase() + ' (' + bytes.length + ' bytes)', 'success');
+            } catch (e) {
+                errorCount++;
+                log('log-patch', 'Dòng ' + (lineNum + 1) + ': ' + e.message, 'error');
+            }
+        });
+
+        if (patchCount > 0) {
+            downloadBlob(new Blob([buf]), patchFile.name + '_patched');
+            log('log-patch', '✅ Hoàn tất! ' + patchCount + ' patch, ' + errorCount + ' lỗi. File đã tải về.', 'success');
+        } else {
+            log('log-patch', '⚠ Không có patch nào được áp dụng.', 'warn');
+        }
+    });
+
+    // ==========================================
+    // TAB 2: LEAK OFFSET (BINARY DIFF)
+    // ==========================================
+    let diffOrigFile = null, diffModFile = null;
+
+    setupDropZone('dz-orig', 'fi-orig', 'info-orig', f => {
+        diffOrigFile = f;
+        if (diffModFile) document.getElementById('diffBtn').disabled = false;
+    });
+    setupDropZone('dz-mod', 'fi-mod', 'info-mod', f => {
+        diffModFile = f;
+        if (diffOrigFile) document.getElementById('diffBtn').disabled = false;
+    });
+
+    document.getElementById('diffBtn').addEventListener('click', async () => {
+        if (!diffOrigFile || !diffModFile) return;
+        const btn = document.getElementById('diffBtn');
+        btn.disabled = true;
+
+        const progressEl = document.getElementById('diffProgress');
+        const bar = document.getElementById('diffProgressBar');
+        const pctEl = document.getElementById('diffProgressPercent');
+        const labelEl = document.getElementById('diffProgressLabel');
+        progressEl.style.display = 'block';
+        bar.style.width = '0%';
+        document.getElementById('diffResultCard').style.display = 'none';
+
+        const total = Math.min(diffOrigFile.size, diffModFile.size);
+        const CHUNK = 8 * 1024 * 1024; // 8MB chunks
+        const MAX_DIFFS = 5000;
+        let diffs = [];
+        let aborted = false;
+
+        log('log-diff', 'Bắt đầu quét ' + fmtSize(total) + '...', 'info');
+
+        try {
+            for (let off = 0; off < total; off += CHUNK) {
+                const end = Math.min(off + CHUNK, total);
+                const pct = Math.floor((end / total) * 100);
+                bar.style.width = pct + '%';
+                pctEl.textContent = pct + '%';
+                labelEl.textContent = 'Đang quét... ' + fmtSize(end) + ' / ' + fmtSize(total);
+
+                const [bO, bM] = await Promise.all([
+                    readSlice(diffOrigFile, off, end),
+                    readSlice(diffModFile, off, end)
+                ]);
+
+                for (let i = 0; i < bO.length; i++) {
+                    if (bO[i] !== bM[i]) {
+                        diffs.push({ off: off + i, o: bO[i], m: bM[i] });
+                        if (diffs.length >= MAX_DIFFS) {
+                            log('log-diff', '⚠ Đạt giới hạn ' + MAX_DIFFS + ' khác biệt, dừng quét.', 'warn');
+                            aborted = true;
+                            break;
+                        }
+                    }
+                }
+                if (aborted) break;
+
+                // Yield to UI thread periodically
+                await new Promise(r => setTimeout(r, 0));
+            }
+
+            bar.style.width = '100%';
+            pctEl.textContent = '100%';
+            labelEl.textContent = 'Hoàn tất!';
+
+            // Render results
+            const resultCard = document.getElementById('diffResultCard');
+            resultCard.style.display = 'block';
+
+            let patchText = '';
+            const tbody = document.getElementById('diffTableBody');
+            tbody.innerHTML = '';
+
+            if (diffs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--success);">2 file giống nhau 100% ✓</td></tr>';
+            } else {
+                const frag = document.createDocumentFragment();
+                diffs.forEach((d, i) => {
+                    const ho = '0x' + d.off.toString(16).toUpperCase();
+                    const og = d.o.toString(16).padStart(2, '0').toUpperCase();
+                    const md = d.m.toString(16).padStart(2, '0').toUpperCase();
+                    patchText += ho + ': ' + md + ' // Gốc: ' + og + '\n';
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + (i + 1) + '</td>' +
+                        '<td style="color:var(--accent);">' + ho + '</td>' +
+                        '<td><span class="badge badge-orig">' + og + '</span></td>' +
+                        '<td><span class="badge badge-mod">' + md + '</span></td>';
+                    frag.appendChild(tr);
+                });
+                tbody.appendChild(frag);
+            }
+
+            document.getElementById('leakedTextarea').value = patchText;
+            document.getElementById('diffStatsBadge').textContent = diffs.length + ' byte' + (diffs.length !== 1 ? 's' : '') + ' thay đổi' + (aborted ? ' (đã cắt)' : '');
+            log('log-diff', '✅ Hoàn tất! Phát hiện ' + diffs.length + ' byte khác biệt.', 'success');
+
+        } catch (e) {
+            log('log-diff', 'Lỗi: ' + e.message, 'error');
+        }
+        btn.disabled = false;
+    });
+
+    // Copy leaked offsets
+    document.getElementById('btnCopyLeak').addEventListener('click', () => {
+        const txt = document.getElementById('leakedTextarea').value;
+        if (!txt) return;
+        navigator.clipboard.writeText(txt).then(() => showToast('✓ Đã copy patch!'));
+    });
+
+    // Send to patcher tab
+    document.getElementById('btnSendToPatcher').addEventListener('click', () => {
+        const txt = document.getElementById('leakedTextarea').value;
+        if (!txt) return;
+        document.getElementById('patchInput').value = txt;
+        // Switch to patcher tab
+        document.querySelector('.tab-btn[data-tab="patcher"]').click();
+        showToast('✓ Đã chuyển offset sang tab Vá Hex!');
+    });
+
+    // ==========================================
+    // TAB 3: ZIP/IPA STRUCTURE COMPARE
+    // ==========================================
+    let ipaOrigFile = null, ipaModFile = null;
+
+    setupDropZone('dz-ipa-orig', 'fi-ipa-orig', 'info-ipa-orig', f => {
+        ipaOrigFile = f;
+        if (ipaModFile) document.getElementById('ipaDiffBtn').disabled = false;
+    });
+    setupDropZone('dz-ipa-mod', 'fi-ipa-mod', 'info-ipa-mod', f => {
+        ipaModFile = f;
+        if (ipaOrigFile) document.getElementById('ipaDiffBtn').disabled = false;
+    });
+
+    document.getElementById('ipaDiffBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('ipaDiffBtn');
+        btn.disabled = true;
+        log('log-ipa', 'Đang đọc cấu trúc file nén...', 'info');
+
+        try {
+            if (typeof JSZip === 'undefined') throw new Error('Thư viện JSZip chưa được tải.');
+
+            const [zO, zM] = await Promise.all([
+                JSZip.loadAsync(ipaOrigFile),
+                JSZip.loadAsync(ipaModFile)
+            ]);
+
+            // Build file maps using public API — read content to compute sizes
+            const origFiles = {};
+            const modFiles = {};
+
+            zO.forEach((path, entry) => {
+                if (!entry.dir) origFiles[path] = entry;
+            });
+            zM.forEach((path, entry) => {
+                if (!entry.dir) modFiles[path] = entry;
+            });
+
+            const tbody = document.getElementById('ipaTableBody');
+            tbody.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            let count = 0;
+
+            // Check originals
+            for (const path in origFiles) {
+                const fO = origFiles[path];
+                const fM = modFiles[path];
+
+                if (!fM) {
+                    count++;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + count + '</td>' +
+                        '<td><span class="badge badge-removed">− Xóa</span></td>' +
+                        '<td style="color:var(--text-secondary); font-family:var(--font-mono); font-size:0.78rem;">' + esc(path) + '</td>' +
+                        '<td>' + fmtSize(fO._data ? fO._data.uncompressedSize : 0) + '</td>' +
+                        '<td>—</td>';
+                    frag.appendChild(tr);
+                } else {
+                    // Compare by reading actual content CRC
+                    const origData = await fO.async('uint8array');
+                    const modData = await fM.async('uint8array');
+                    let differs = origData.length !== modData.length;
+                    if (!differs) {
+                        for (let i = 0; i < origData.length; i++) {
+                            if (origData[i] !== modData[i]) { differs = true; break; }
+                        }
+                    }
+                    if (differs) {
+                        count++;
+                        const tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td>' + count + '</td>' +
+                            '<td><span class="badge badge-modified">✎ Sửa</span></td>' +
+                            '<td style="color:var(--text-secondary); font-family:var(--font-mono); font-size:0.78rem;">' + esc(path) + '</td>' +
+                            '<td>' + fmtSize(origData.length) + '</td>' +
+                            '<td>' + fmtSize(modData.length) + '</td>';
+                        frag.appendChild(tr);
+                    }
+                    delete modFiles[path];
+                }
+            }
+
+            // New files in mod
+            for (const path in modFiles) {
+                const fM = modFiles[path];
+                const data = await fM.async('uint8array');
+                count++;
+                const tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td>' + count + '</td>' +
+                    '<td><span class="badge badge-added">+ Thêm</span></td>' +
+                    '<td style="color:var(--text-secondary); font-family:var(--font-mono); font-size:0.78rem;">' + esc(path) + '</td>' +
+                    '<td>—</td>' +
+                    '<td>' + fmtSize(data.length) + '</td>';
+                frag.appendChild(tr);
+            }
+
+            if (count === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="5" style="text-align:center; color:var(--success);">2 file giống nhau 100% ✓</td>';
+                frag.appendChild(tr);
+            }
+
+            tbody.appendChild(frag);
+            document.getElementById('ipaResultCard').style.display = 'block';
+            document.getElementById('ipaStatsBadge').textContent = count + ' thay đổi';
+            log('log-ipa', '✅ Hoàn tất! ' + count + ' điểm khác biệt.', 'success');
+
+        } catch (e) {
+            log('log-ipa', 'Lỗi đọc ZIP: ' + e.message, 'error');
+        }
+        btn.disabled = false;
+    });
+
+    // ==========================================
+    // TAB 4: SEARCH & REPLACE
+    // ==========================================
+    let searchFile = null;
+
+    setupDropZone('dz-search', 'fi-search', 'info-search', f => {
+        searchFile = f;
+        document.getElementById('btnOnlySearch').disabled = false;
+        document.getElementById('btnReplaceExport').disabled = false;
+    });
+
+    async function runSearchReplace(doReplace) {
+        if (!searchFile) return;
+        const searchStr = document.getElementById('searchInput').value;
+        const replaceStr = document.getElementById('replaceInput').value;
+        const padMethod = document.getElementById('padMethod').value;
+
+        if (!searchStr) {
+            showToast('⚠ Nhập text cần tìm!');
+            return;
+        }
+
+        const btnSearch = document.getElementById('btnOnlySearch');
+        const btnReplace = document.getElementById('btnReplaceExport');
+        btnSearch.disabled = true;
+        btnReplace.disabled = true;
+        document.getElementById('searchResultCard').style.display = 'none';
+
+        const enc = new TextEncoder();
+        const searchBytes = enc.encode(searchStr);
+        let replaceBytes = doReplace ? enc.encode(replaceStr) : new Uint8Array(0);
+
+        // Safe mode: pad or truncate to match length
+        if (doReplace) {
+            if (replaceBytes.length > searchBytes.length) {
+                replaceBytes = replaceBytes.slice(0, searchBytes.length);
+                log('log-search', '⚠ Text thay thế dài hơn → đã cắt bớt để bảo toàn kích thước.', 'warn');
+            } else if (replaceBytes.length < searchBytes.length) {
+                const padded = new Uint8Array(searchBytes.length);
+                padded.set(replaceBytes);
+                const padByte = padMethod === 'null' ? 0x00 : 0x20;
+                for (let k = replaceBytes.length; k < searchBytes.length; k++) padded[k] = padByte;
+                replaceBytes = padded;
+            }
+        }
+
+        let totalFound = 0;
+        const tbody = document.getElementById('searchTableBody');
+        tbody.innerHTML = '';
+        const frag = document.createDocumentFragment();
+
+        log('log-search', 'Đang quét "' + searchStr + '"...', 'info');
+
+        try {
+            let isZip = false, zip;
+            try { zip = await JSZip.loadAsync(searchFile); isZip = true; } catch (e) { /* not a zip */ }
+
+            if (isZip) {
+                const paths = Object.keys(zip.files).filter(p => !zip.files[p].dir);
+                log('log-search', 'Phát hiện file nén với ' + paths.length + ' file bên trong.', 'info');
+
+                for (const path of paths) {
+                    const fileData = await zip.file(path).async('uint8array');
+                    const offsets = findAllOccurrences(fileData, searchBytes);
+
+                    if (offsets.length > 0) {
+                        offsets.forEach(off => {
+                            totalFound++;
+                            const tr = document.createElement('tr');
+                            tr.innerHTML =
+                                '<td>' + totalFound + '</td>' +
+                                '<td style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-secondary);">' + esc(path) + '</td>' +
+                                '<td style="color:var(--accent);">0x' + off.toString(16).toUpperCase() + '</td>' +
+                                '<td><span class="badge badge-found">Found</span></td>';
+                            frag.appendChild(tr);
+                        });
+
+                        if (doReplace) {
+                            const modData = new Uint8Array(fileData);
+                            offsets.forEach(off => {
+                                for (let b = 0; b < replaceBytes.length; b++) modData[off + b] = replaceBytes[b];
+                            });
+                            zip.file(path, modData);
+                        }
+                    }
+                    // Yield
+                    await new Promise(r => setTimeout(r, 0));
+                }
+
+                if (doReplace && totalFound > 0) {
+                    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+                    downloadBlob(blob, 'Modded_' + searchFile.name);
+                    log('log-search', '✅ Đã thay thế và xuất file thành công!', 'success');
+                }
+            } else {
+                // Plain binary file
+                const buffer = new Uint8Array(await readAsArrayBuffer(searchFile));
+                const offsets = findAllOccurrences(buffer, searchBytes);
+
+                offsets.forEach(off => {
+                    totalFound++;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + totalFound + '</td>' +
+                        '<td style="color:var(--text-muted);">[File gốc]</td>' +
+                        '<td style="color:var(--accent);">0x' + off.toString(16).toUpperCase() + '</td>' +
+                        '<td><span class="badge badge-found">Found</span></td>';
+                    frag.appendChild(tr);
+                });
+
+                if (doReplace && totalFound > 0) {
+                    offsets.forEach(off => {
+                        for (let b = 0; b < replaceBytes.length; b++) buffer[off + b] = replaceBytes[b];
+                    });
+                    downloadBlob(new Blob([buffer]), 'Modded_' + searchFile.name);
+                    log('log-search', '✅ Đã thay thế và xuất file thành công!', 'success');
+                }
+            }
+
+            if (totalFound === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="4" style="text-align:center; color:var(--text-muted);">Không tìm thấy dữ liệu khớp</td>';
+                frag.appendChild(tr);
+            }
+
+            tbody.appendChild(frag);
+            document.getElementById('searchResultCard').style.display = 'block';
+            document.getElementById('searchStatsBadge').textContent = 'Tổng: ' + totalFound + ' vị trí';
+            log('log-search', '✅ Hoàn tất! Tìm thấy ' + totalFound + ' kết quả.', 'info');
+
+        } catch (e) {
+            log('log-search', 'Lỗi: ' + e.message, 'error');
+        }
+
+        btnSearch.disabled = false;
+        btnReplace.disabled = false;
+    }
+
+    document.getElementById('btnOnlySearch').addEventListener('click', () => runSearchReplace(false));
+    document.getElementById('btnReplaceExport').addEventListener('click', () => runSearchReplace(true));
+
+    // ==========================================
+    // TAB 5: DEEP ANALYZER
+    // ==========================================
+    let analyzerFile = null;
+
+    setupDropZone('dz-analyzer', 'fi-analyzer', 'info-analyzer', f => {
+        analyzerFile = f;
+        document.getElementById('btnAnalyze').disabled = false;
+    });
+
+    const SUSPICIOUS_KW = ['anti', 'cheat', 'guard', 'protect', 'ssl', 'cert', 'log', 'tracker', 'firebase', 'crashlytics', 'jailbreak', 'root', 'tamper', 'hook', 'frida', 'xposed', 'magisk'];
+    const CORE_EXT = new Set(['dll', 'so', 'dylib', 'framework', 'exe', 'bin']);
+    const CONFIG_EXT = new Set(['plist', 'xml', 'json', 'yaml', 'yml', 'ini', 'cfg']);
+    const MEDIA_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp3', 'wav', 'ogg', 'mp4', 'ttf', 'otf', 'obj', 'fbx', 'svg']);
+
+    document.getElementById('btnAnalyze').addEventListener('click', async () => {
+        if (!analyzerFile) return;
+        const btn = document.getElementById('btnAnalyze');
+        btn.disabled = true;
+        document.getElementById('analyzerDashboard').style.display = 'none';
+        document.getElementById('log-analyzer').innerHTML = '';
+        log('log-analyzer', 'Khởi động bộ quét phân tích...', 'info');
+
+        try {
+            if (typeof JSZip === 'undefined') throw new Error('Thư viện JSZip chưa được tải.');
+            const zip = await JSZip.loadAsync(analyzerFile);
+            const stats = { total: 0, core: 0, config: 0, media: 0, suspicious: 0 };
+
+            const analysisTable = document.getElementById('analyzerTableBody');
+            analysisTable.innerHTML = '';
+            const tableFrag = document.createDocumentFragment();
+
+            const suspList = document.getElementById('suspiciousList');
+            suspList.innerHTML = '';
+            const suspFrag = document.createDocumentFragment();
+
+            const paths = Object.keys(zip.files).filter(p => !zip.files[p].dir);
+
+            for (const path of paths) {
+                const entry = zip.files[path];
+                stats.total++;
+
+                const fileName = path.split('/').pop().toLowerCase();
+                const ext = fileName.includes('.') ? fileName.split('.').pop() : '';
+
+                // Get actual size via public API
+                let fileSize = 0;
+                try {
+                    const data = await entry.async('uint8array');
+                    fileSize = data.length;
+                } catch (e) {
+                    // fallback
+                    fileSize = entry._data ? entry._data.uncompressedSize : 0;
+                }
+
+                let typeBadge, analysis, isCore = false;
+
+                if (CORE_EXT.has(ext) || fileName === 'unityframework' || fileName.includes('il2cpp')) {
+                    stats.core++;
+                    isCore = true;
+                    typeBadge = '<span class="badge badge-core">Core</span>';
+                    analysis = 'File biên dịch. Chứa logic vận hành chính.';
+                } else if (CONFIG_EXT.has(ext)) {
+                    stats.config++;
+                    typeBadge = '<span class="badge badge-config">Config</span>';
+                    analysis = 'File cấu hình tham số.';
+                } else if (MEDIA_EXT.has(ext)) {
+                    stats.media++;
+                    typeBadge = '<span class="badge badge-media">Media</span>';
+                    analysis = 'Tài nguyên đa phương tiện.';
+                } else {
+                    typeBadge = '<span class="badge badge-data">Data</span>';
+                    analysis = 'Dữ liệu ứng dụng.';
+                }
+
+                const isSuspicious = SUSPICIOUS_KW.some(kw => path.toLowerCase().includes(kw));
+                if (isSuspicious) {
+                    stats.suspicious++;
+                    typeBadge = '<span class="badge badge-risk">⚠ Rủi Ro</span>';
+                    analysis = 'Đáng ngờ! Có thể chứa anti-cheat/giám sát.';
+
+                    const li = document.createElement('li');
+                    li.innerHTML = '<span class="file-name">' + esc(fileName) + '</span><br><span class="file-path">' + esc(path) + '</span>';
+                    suspFrag.appendChild(li);
+                }
+
+                // Only show important files in table
+                if (isCore || isSuspicious || ['info.plist', 'androidmanifest.xml'].includes(fileName)) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + typeBadge + '</td>' +
+                        '<td style="color:var(--accent); font-family:var(--font-mono); font-size:0.78rem;">' + esc(path) + '</td>' +
+                        '<td>' + fmtSize(fileSize) + '</td>' +
+                        '<td style="font-size:0.8rem; color:var(--text-secondary);">' + analysis + '</td>';
+                    tableFrag.appendChild(tr);
+                }
+            }
+
+            // Fill stats
+            document.getElementById('anaTotalFiles').textContent = stats.total.toLocaleString();
+            document.getElementById('anaCoreFiles').textContent = stats.core.toLocaleString();
+            document.getElementById('anaConfigFiles').textContent = stats.config.toLocaleString();
+            document.getElementById('anaMediaFiles').textContent = stats.media.toLocaleString();
+
+            // Suspicious list
+            if (suspFrag.children.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'clean';
+                li.textContent = '✓ Sạch sẽ. Không phát hiện file giám sát đáng ngờ.';
+                suspFrag.appendChild(li);
+            }
+            suspList.appendChild(suspFrag);
+
+            // Analysis table
+            if (tableFrag.children.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="4" style="text-align:center; color:var(--text-muted);">Không có file đáng chú ý.</td>';
+                tableFrag.appendChild(tr);
+            }
+            analysisTable.appendChild(tableFrag);
+
+            document.getElementById('analyzerDashboard').style.display = 'flex';
+            log('log-analyzer', '✅ Hoàn tất! ' + stats.total + ' file, ' + stats.suspicious + ' cảnh báo rủi ro.', 'success');
+
+        } catch (e) {
+            log('log-analyzer', 'Lỗi phân tích: ' + e.message, 'error');
+        }
+        btn.disabled = false;
+    });
+
+})();
+</script>
+
+</body>
+</html>
