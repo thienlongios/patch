@@ -545,6 +545,7 @@
             border-bottom: 1px solid var(--border-subtle);
             position: sticky;
             top: 0;
+            white-space: nowrap;
         }
         .data-table td {
             padding: 0.6rem 0.85rem;
@@ -568,8 +569,8 @@
             font-size: 0.72rem;
             font-weight: 700;
             font-family: var(--font-sans);
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
         }
         .badge-orig { background: rgba(99, 117, 171, 0.2); color: var(--text-secondary); }
         .badge-mod { background: var(--accent-glow); color: #93b4ff; }
@@ -767,7 +768,7 @@
 
         <div class="card" id="diffResultCard" style="display: none;">
             <div class="card-title" style="justify-content: space-between;">
-                <span><span class="icon">📊</span> Kết Quả Leak Offset</span>
+                <span><span class="icon">📊</span> Kết Quả Leak Offset (Hex Dump)</span>
                 <span id="diffStatsBadge" style="font-size: 0.85rem; color: var(--success); font-weight: 700;"></span>
             </div>
             <div class="actions-bar">
@@ -775,9 +776,10 @@
                 <button class="btn-secondary" id="btnSendToPatcher">➡️ Chuyển sang Vá Hex</button>
             </div>
             <textarea id="leakedTextarea" readonly style="height: 140px; margin-bottom: 1rem;"></textarea>
-            <div class="table-container" style="max-height: 350px; overflow-y: auto;">
+            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
                 <table class="data-table">
-                    <thead><tr><th>#</th><th>Offset</th><th>Gốc</th><th>Đã Sửa</th></tr></thead>
+                    <!-- Bảng được cập nhật giao diện như Hex Editor -->
+                    <thead><tr><th>#</th><th>Offset</th><th>Mã Hex Gốc</th><th>Mã Hex Sửa</th><th>ASCII (Sửa)</th></tr></thead>
                     <tbody id="diffTableBody"></tbody>
                 </table>
             </div>
@@ -1016,7 +1018,7 @@
         con.scrollTop = con.scrollHeight;
     }
 
-    /** Parse hex bytes from string like "200080D2 C0035FD6" */
+    /** Parse hex bytes from string */
     function parseHexBytes(hexStr) {
         const clean = hexStr.replace(/[^0-9a-fA-F]/g, '');
         if (clean.length % 2 !== 0) throw new Error('Số ký tự hex không hợp lệ (phải chẵn)');
@@ -1027,12 +1029,11 @@
         return bytes;
     }
 
-    /** Boyer-Moore-Horspool-ish byte search */
+    /** Byte search algorithm */
     function findAllOccurrences(source, pattern) {
         const results = [];
         if (!pattern.length || source.length < pattern.length) return results;
         const last = pattern.length - 1;
-        // Build bad-character table
         const skip = new Int32Array(256).fill(pattern.length);
         for (let i = 0; i < last; i++) skip[pattern[i]] = last - i;
 
@@ -1042,7 +1043,7 @@
             while (j >= 0 && source[i + j] === pattern[j]) j--;
             if (j < 0) {
                 results.push(i);
-                i += pattern.length; // non-overlapping
+                i += pattern.length;
             } else {
                 i += Math.max(1, skip[source[i + last]]);
             }
@@ -1050,7 +1051,6 @@
         return results;
     }
 
-    /** Read file as ArrayBuffer, returns Promise */
     function readAsArrayBuffer(file) {
         return new Promise((resolve, reject) => {
             const r = new FileReader();
@@ -1060,7 +1060,6 @@
         });
     }
 
-    /** Read a file slice as Uint8Array, returns Promise */
     function readSlice(file, start, end) {
         return new Promise((resolve, reject) => {
             const r = new FileReader();
@@ -1070,9 +1069,6 @@
         });
     }
 
-    // ==========================================
-    // DROP ZONE SETUP (generic reusable)
-    // ==========================================
     function setupDropZone(dzId, inputId, infoId, callback) {
         const dz = document.getElementById(dzId);
         const fi = document.getElementById(inputId);
@@ -1104,13 +1100,11 @@
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const tab = btn.dataset.tab;
-            // Deactivate all
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => {
                 c.classList.remove('active');
                 c.style.display = 'none';
             });
-            // Activate target
             btn.classList.add('active');
             const target = document.getElementById('tab-' + tab);
             if (target) {
@@ -1138,7 +1132,7 @@
 
     document.getElementById('btnLoadExample').addEventListener('click', () => {
         document.getElementById('patchInput').value =
-            '0x554b9ec: 200080D2 C0035FD6 // Ví dụ: return 1\n0x1000: 00 01 02 03 // Ghi 4 byte';
+            '0x00554B9C: 20 00 80 D2 C0 03 5F D6 // Ví dụ thay đổi nhiều byte\n0x00001234: 00 01 02 03';
     });
 
     document.getElementById('patchBtn').addEventListener('click', () => {
@@ -1157,9 +1151,8 @@
                 if (isNaN(offset)) throw new Error('Offset không hợp lệ');
                 const bytes = parseHexBytes(parts.slice(1).join(''));
 
-                // Bounds check
                 if (offset < 0 || offset + bytes.length > buf.length) {
-                    throw new Error('Offset 0x' + offset.toString(16) + ' + ' + bytes.length + ' bytes vượt ngoài file (size: ' + buf.length + ')');
+                    throw new Error('Offset 0x' + offset.toString(16) + ' vượt ngoài file');
                 }
 
                 for (let i = 0; i < bytes.length; i++) buf[offset + i] = bytes[i];
@@ -1207,8 +1200,8 @@
         document.getElementById('diffResultCard').style.display = 'none';
 
         const total = Math.min(diffOrigFile.size, diffModFile.size);
-        const CHUNK = 8 * 1024 * 1024; // 8MB chunks
-        const MAX_DIFFS = 5000;
+        const CHUNK = 8 * 1024 * 1024;
+        const MAX_DIFFS = 50000; // Tăng giới hạn lên vì giờ đã gộp dòng
         let diffs = [];
         let aborted = false;
 
@@ -1231,7 +1224,7 @@
                     if (bO[i] !== bM[i]) {
                         diffs.push({ off: off + i, o: bO[i], m: bM[i] });
                         if (diffs.length >= MAX_DIFFS) {
-                            log('log-diff', '⚠ Đạt giới hạn ' + MAX_DIFFS + ' khác biệt, dừng quét.', 'warn');
+                            log('log-diff', '⚠ Đạt giới hạn byte thay đổi, dừng quét sớm.', 'warn');
                             aborted = true;
                             break;
                         }
@@ -1239,7 +1232,6 @@
                 }
                 if (aborted) break;
 
-                // Yield to UI thread periodically
                 await new Promise(r => setTimeout(r, 0));
             }
 
@@ -1247,7 +1239,37 @@
             pctEl.textContent = '100%';
             labelEl.textContent = 'Hoàn tất!';
 
-            // Render results
+            // -----------------------------------------------------------------
+            // THUẬT TOÁN MỚI: GỘP CÁC BYTE LIÊN TIẾP NHAU (TỐI ĐA 8 BYTE/DÒNG)
+            // -----------------------------------------------------------------
+            let groupedDiffs = [];
+            if (diffs.length > 0) {
+                let currentGroup = {
+                    off: diffs[0].off,
+                    o: [diffs[0].o],
+                    m: [diffs[0].m]
+                };
+
+                for (let i = 1; i < diffs.length; i++) {
+                    // Nếu byte tiếp theo nằm ngay sát byte trước đó VÀ dòng hiện tại chưa quá 8 byte
+                    if (diffs[i].off === currentGroup.off + currentGroup.m.length && currentGroup.m.length < 8) {
+                        currentGroup.o.push(diffs[i].o);
+                        currentGroup.m.push(diffs[i].m);
+                    } else {
+                        // Đóng gói dòng cũ, mở dòng mới
+                        groupedDiffs.push(currentGroup);
+                        currentGroup = {
+                            off: diffs[i].off,
+                            o: [diffs[i].o],
+                            m: [diffs[i].m]
+                        };
+                    }
+                }
+                groupedDiffs.push(currentGroup); // Đẩy dòng cuối cùng vào mảng
+            }
+            // -----------------------------------------------------------------
+
+            // Render giao diện
             const resultCard = document.getElementById('diffResultCard');
             resultCard.style.display = 'block';
 
@@ -1255,30 +1277,40 @@
             const tbody = document.getElementById('diffTableBody');
             tbody.innerHTML = '';
 
-            if (diffs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--success);">2 file giống nhau 100% ✓</td></tr>';
+            if (groupedDiffs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--success);">2 file giống nhau 100% ✓</td></tr>';
             } else {
                 const frag = document.createDocumentFragment();
-                diffs.forEach((d, i) => {
-                    const ho = '0x' + d.off.toString(16).toUpperCase();
-                    const og = d.o.toString(16).padStart(2, '0').toUpperCase();
-                    const md = d.m.toString(16).padStart(2, '0').toUpperCase();
-                    patchText += ho + ': ' + md + ' // Gốc: ' + og + '\n';
+                groupedDiffs.forEach((g, i) => {
+                    // Căn lề số 0 cho Offset cho giống hình (ví dụ: 0x00000068)
+                    const ho = '0x' + g.off.toString(16).toUpperCase().padStart(8, '0');
+                    
+                    // Chuyển mảng byte thành chuỗi Hex có dấu cách (vd: "5F 5F 54 45")
+                    const ogHex = g.o.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+                    const mdHex = g.m.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
 
+                    // Tạo chuỗi Text (bỏ vào textarea để copy nhanh)
+                    patchText += ho + ': ' + mdHex + ' // Gốc: ' + ogHex + '\n';
+
+                    // Dịch mã Hex sang ASCII (Chỉ lấy ký tự đọc được từ 32 đến 126, còn lại thay bằng dấu chấm)
+                    const asciiStr = g.m.map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join(' ');
+
+                    // Gắn vào bảng
                     const tr = document.createElement('tr');
                     tr.innerHTML =
                         '<td>' + (i + 1) + '</td>' +
-                        '<td style="color:var(--accent);">' + ho + '</td>' +
-                        '<td><span class="badge badge-orig">' + og + '</span></td>' +
-                        '<td><span class="badge badge-mod">' + md + '</span></td>';
+                        '<td style="color:var(--accent); font-family:var(--font-mono);">' + ho + '</td>' +
+                        '<td><span class="badge badge-orig">' + ogHex + '</span></td>' +
+                        '<td><span class="badge badge-mod">' + mdHex + '</span></td>' +
+                        '<td style="color:var(--text-muted); font-family:var(--font-mono); font-weight:600;">' + esc(asciiStr) + '</td>';
                     frag.appendChild(tr);
                 });
                 tbody.appendChild(frag);
             }
 
             document.getElementById('leakedTextarea').value = patchText;
-            document.getElementById('diffStatsBadge').textContent = diffs.length + ' byte' + (diffs.length !== 1 ? 's' : '') + ' thay đổi' + (aborted ? ' (đã cắt)' : '');
-            log('log-diff', '✅ Hoàn tất! Phát hiện ' + diffs.length + ' byte khác biệt.', 'success');
+            document.getElementById('diffStatsBadge').textContent = 'Đã gộp thành ' + groupedDiffs.length + ' dòng';
+            log('log-diff', '✅ Hoàn tất! Quét thấy ' + diffs.length + ' byte khác biệt, gộp thành ' + groupedDiffs.length + ' block.', 'success');
 
         } catch (e) {
             log('log-diff', 'Lỗi: ' + e.message, 'error');
@@ -1286,21 +1318,18 @@
         btn.disabled = false;
     });
 
-    // Copy leaked offsets
     document.getElementById('btnCopyLeak').addEventListener('click', () => {
         const txt = document.getElementById('leakedTextarea').value;
         if (!txt) return;
         navigator.clipboard.writeText(txt).then(() => showToast('✓ Đã copy patch!'));
     });
 
-    // Send to patcher tab
     document.getElementById('btnSendToPatcher').addEventListener('click', () => {
         const txt = document.getElementById('leakedTextarea').value;
         if (!txt) return;
         document.getElementById('patchInput').value = txt;
-        // Switch to patcher tab
         document.querySelector('.tab-btn[data-tab="patcher"]').click();
-        showToast('✓ Đã chuyển offset sang tab Vá Hex!');
+        showToast('✓ Đã chuyển sang tab Vá Hex!');
     });
 
     // ==========================================
@@ -1330,23 +1359,17 @@
                 JSZip.loadAsync(ipaModFile)
             ]);
 
-            // Build file maps using public API — read content to compute sizes
             const origFiles = {};
             const modFiles = {};
 
-            zO.forEach((path, entry) => {
-                if (!entry.dir) origFiles[path] = entry;
-            });
-            zM.forEach((path, entry) => {
-                if (!entry.dir) modFiles[path] = entry;
-            });
+            zO.forEach((path, entry) => { if (!entry.dir) origFiles[path] = entry; });
+            zM.forEach((path, entry) => { if (!entry.dir) modFiles[path] = entry; });
 
             const tbody = document.getElementById('ipaTableBody');
             tbody.innerHTML = '';
             const frag = document.createDocumentFragment();
             let count = 0;
 
-            // Check originals
             for (const path in origFiles) {
                 const fO = origFiles[path];
                 const fM = modFiles[path];
@@ -1362,7 +1385,6 @@
                         '<td>—</td>';
                     frag.appendChild(tr);
                 } else {
-                    // Compare by reading actual content CRC
                     const origData = await fO.async('uint8array');
                     const modData = await fM.async('uint8array');
                     let differs = origData.length !== modData.length;
@@ -1386,7 +1408,6 @@
                 }
             }
 
-            // New files in mod
             for (const path in modFiles) {
                 const fM = modFiles[path];
                 const data = await fM.async('uint8array');
@@ -1450,11 +1471,10 @@
         const searchBytes = enc.encode(searchStr);
         let replaceBytes = doReplace ? enc.encode(replaceStr) : new Uint8Array(0);
 
-        // Safe mode: pad or truncate to match length
         if (doReplace) {
             if (replaceBytes.length > searchBytes.length) {
                 replaceBytes = replaceBytes.slice(0, searchBytes.length);
-                log('log-search', '⚠ Text thay thế dài hơn → đã cắt bớt để bảo toàn kích thước.', 'warn');
+                log('log-search', '⚠ Text thay thế dài hơn → đã cắt bớt.', 'warn');
             } else if (replaceBytes.length < searchBytes.length) {
                 const padded = new Uint8Array(searchBytes.length);
                 padded.set(replaceBytes);
@@ -1473,12 +1493,10 @@
 
         try {
             let isZip = false, zip;
-            try { zip = await JSZip.loadAsync(searchFile); isZip = true; } catch (e) { /* not a zip */ }
+            try { zip = await JSZip.loadAsync(searchFile); isZip = true; } catch (e) { }
 
             if (isZip) {
                 const paths = Object.keys(zip.files).filter(p => !zip.files[p].dir);
-                log('log-search', 'Phát hiện file nén với ' + paths.length + ' file bên trong.', 'info');
-
                 for (const path of paths) {
                     const fileData = await zip.file(path).async('uint8array');
                     const offsets = findAllOccurrences(fileData, searchBytes);
@@ -1503,17 +1521,14 @@
                             zip.file(path, modData);
                         }
                     }
-                    // Yield
                     await new Promise(r => setTimeout(r, 0));
                 }
-
                 if (doReplace && totalFound > 0) {
                     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
                     downloadBlob(blob, 'Modded_' + searchFile.name);
-                    log('log-search', '✅ Đã thay thế và xuất file thành công!', 'success');
+                    log('log-search', '✅ Đã thay thế và tải file!', 'success');
                 }
             } else {
-                // Plain binary file
                 const buffer = new Uint8Array(await readAsArrayBuffer(searchFile));
                 const offsets = findAllOccurrences(buffer, searchBytes);
 
@@ -1533,20 +1548,20 @@
                         for (let b = 0; b < replaceBytes.length; b++) buffer[off + b] = replaceBytes[b];
                     });
                     downloadBlob(new Blob([buffer]), 'Modded_' + searchFile.name);
-                    log('log-search', '✅ Đã thay thế và xuất file thành công!', 'success');
+                    log('log-search', '✅ Đã thay thế và tải file!', 'success');
                 }
             }
 
             if (totalFound === 0) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="4" style="text-align:center; color:var(--text-muted);">Không tìm thấy dữ liệu khớp</td>';
+                tr.innerHTML = '<td colspan="4" style="text-align:center; color:var(--text-muted);">Không tìm thấy</td>';
                 frag.appendChild(tr);
             }
 
             tbody.appendChild(frag);
             document.getElementById('searchResultCard').style.display = 'block';
             document.getElementById('searchStatsBadge').textContent = 'Tổng: ' + totalFound + ' vị trí';
-            log('log-search', '✅ Hoàn tất! Tìm thấy ' + totalFound + ' kết quả.', 'info');
+            log('log-search', 'Hoàn tất! Tìm thấy ' + totalFound + ' kết quả.', 'info');
 
         } catch (e) {
             log('log-search', 'Lỗi: ' + e.message, 'error');
@@ -1580,10 +1595,10 @@
         btn.disabled = true;
         document.getElementById('analyzerDashboard').style.display = 'none';
         document.getElementById('log-analyzer').innerHTML = '';
-        log('log-analyzer', 'Khởi động bộ quét phân tích...', 'info');
+        log('log-analyzer', 'Khởi động bộ quét...', 'info');
 
         try {
-            if (typeof JSZip === 'undefined') throw new Error('Thư viện JSZip chưa được tải.');
+            if (typeof JSZip === 'undefined') throw new Error('Thư viện JSZip chưa tải.');
             const zip = await JSZip.loadAsync(analyzerFile);
             const stats = { total: 0, core: 0, config: 0, media: 0, suspicious: 0 };
 
@@ -1604,13 +1619,11 @@
                 const fileName = path.split('/').pop().toLowerCase();
                 const ext = fileName.includes('.') ? fileName.split('.').pop() : '';
 
-                // Get actual size via public API
                 let fileSize = 0;
                 try {
                     const data = await entry.async('uint8array');
                     fileSize = data.length;
                 } catch (e) {
-                    // fallback
                     fileSize = entry._data ? entry._data.uncompressedSize : 0;
                 }
 
@@ -1620,32 +1633,31 @@
                     stats.core++;
                     isCore = true;
                     typeBadge = '<span class="badge badge-core">Core</span>';
-                    analysis = 'File biên dịch. Chứa logic vận hành chính.';
+                    analysis = 'File biên dịch chính.';
                 } else if (CONFIG_EXT.has(ext)) {
                     stats.config++;
                     typeBadge = '<span class="badge badge-config">Config</span>';
-                    analysis = 'File cấu hình tham số.';
+                    analysis = 'File cấu hình.';
                 } else if (MEDIA_EXT.has(ext)) {
                     stats.media++;
                     typeBadge = '<span class="badge badge-media">Media</span>';
-                    analysis = 'Tài nguyên đa phương tiện.';
+                    analysis = 'Tài nguyên đồ họa/âm thanh.';
                 } else {
                     typeBadge = '<span class="badge badge-data">Data</span>';
-                    analysis = 'Dữ liệu ứng dụng.';
+                    analysis = 'Dữ liệu chung.';
                 }
 
                 const isSuspicious = SUSPICIOUS_KW.some(kw => path.toLowerCase().includes(kw));
                 if (isSuspicious) {
                     stats.suspicious++;
                     typeBadge = '<span class="badge badge-risk">⚠ Rủi Ro</span>';
-                    analysis = 'Đáng ngờ! Có thể chứa anti-cheat/giám sát.';
+                    analysis = 'Đáng ngờ! Chứa từ khóa nhạy cảm.';
 
                     const li = document.createElement('li');
                     li.innerHTML = '<span class="file-name">' + esc(fileName) + '</span><br><span class="file-path">' + esc(path) + '</span>';
                     suspFrag.appendChild(li);
                 }
 
-                // Only show important files in table
                 if (isCore || isSuspicious || ['info.plist', 'androidmanifest.xml'].includes(fileName)) {
                     const tr = document.createElement('tr');
                     tr.innerHTML =
@@ -1657,34 +1669,31 @@
                 }
             }
 
-            // Fill stats
             document.getElementById('anaTotalFiles').textContent = stats.total.toLocaleString();
             document.getElementById('anaCoreFiles').textContent = stats.core.toLocaleString();
             document.getElementById('anaConfigFiles').textContent = stats.config.toLocaleString();
             document.getElementById('anaMediaFiles').textContent = stats.media.toLocaleString();
 
-            // Suspicious list
             if (suspFrag.children.length === 0) {
                 const li = document.createElement('li');
                 li.className = 'clean';
-                li.textContent = '✓ Sạch sẽ. Không phát hiện file giám sát đáng ngờ.';
+                li.textContent = '✓ Sạch sẽ. Không phát hiện file giám sát.';
                 suspFrag.appendChild(li);
             }
             suspList.appendChild(suspFrag);
 
-            // Analysis table
             if (tableFrag.children.length === 0) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="4" style="text-align:center; color:var(--text-muted);">Không có file đáng chú ý.</td>';
+                tr.innerHTML = '<td colspan="4" style="text-align:center; color:var(--text-muted);">Không có dữ liệu.</td>';
                 tableFrag.appendChild(tr);
             }
             analysisTable.appendChild(tableFrag);
 
             document.getElementById('analyzerDashboard').style.display = 'flex';
-            log('log-analyzer', '✅ Hoàn tất! ' + stats.total + ' file, ' + stats.suspicious + ' cảnh báo rủi ro.', 'success');
+            log('log-analyzer', 'Hoàn tất! ' + stats.total + ' file, ' + stats.suspicious + ' cảnh báo.', 'success');
 
         } catch (e) {
-            log('log-analyzer', 'Lỗi phân tích: ' + e.message, 'error');
+            log('log-analyzer', 'Lỗi: ' + e.message, 'error');
         }
         btn.disabled = false;
     });
