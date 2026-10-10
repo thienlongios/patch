@@ -3,1703 +3,603 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Binary & IPA Patcher Tool</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
+    <title>AI Media Studio Pro | Trích xuất & Nhân bản</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a' },
+                        primary: { 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5' }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        /* ============================================
-           ROOT DESIGN TOKENS
-           ============================================ */
-        :root {
-            --bg-base: #06080f;
-            --bg-surface: #0c1021;
-            --bg-elevated: #131830;
-            --bg-overlay: rgba(12, 16, 33, 0.85);
-            --border-subtle: rgba(99, 117, 171, 0.15);
-            --border-default: rgba(99, 117, 171, 0.25);
-            --border-focus: #5b7cf7;
-
-            --accent: #5b7cf7;
-            --accent-hover: #4a6ae5;
-            --accent-glow: rgba(91, 124, 247, 0.25);
-            --success: #34d399;
-            --success-dim: rgba(52, 211, 153, 0.15);
-            --danger: #f87171;
-            --danger-dim: rgba(248, 113, 113, 0.15);
-            --warning: #fbbf24;
-            --warning-dim: rgba(251, 191, 36, 0.15);
-            --purple: #a78bfa;
-            --purple-dim: rgba(167, 139, 250, 0.15);
-
-            --text-primary: #e8ecf4;
-            --text-secondary: #8896b8;
-            --text-muted: #5a6a8a;
-            --text-inverse: #06080f;
-
-            --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --radius-lg: 14px;
-            --radius-xl: 20px;
-
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-            --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
-            --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
-            --shadow-glow: 0 0 24px var(--accent-glow);
-
-            --transition-fast: 150ms ease;
-            --transition-normal: 250ms ease;
-        }
-
-        /* ============================================
-           RESET & BASE
-           ============================================ */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: var(--font-sans);
-            background-color: var(--bg-base);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            padding: 2rem 1rem;
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            background-image:
-                radial-gradient(ellipse 80% 50% at 50% -20%, rgba(91, 124, 247, 0.08), transparent),
-                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(167, 139, 250, 0.05), transparent);
-        }
-
-        /* ============================================
-           LAYOUT
-           ============================================ */
-        .app-container {
-            width: 100%;
-            max-width: 1060px;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        @media (max-width: 768px) {
-            .grid-2 { grid-template-columns: 1fr; }
-            .app-header h1 { font-size: 1.4rem !important; }
-            .tab-btn { font-size: 0.78rem !important; padding: 0.6rem 0.5rem !important; }
-        }
-
-        /* ============================================
-           HEADER
-           ============================================ */
-        .app-header {
-            text-align: center;
-            padding: 1.5rem 0 1.25rem;
-            position: relative;
-        }
-        .app-header::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 10%;
-            right: 10%;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--border-default), transparent);
-        }
-        .app-header .logo-icon {
-            font-size: 2.2rem;
-            margin-bottom: 0.3rem;
-            display: block;
-            filter: drop-shadow(0 0 12px var(--accent-glow));
-        }
-        .app-header h1 {
-            font-size: 1.7rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #7fa0ff, #a78bfa, #c084fc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -0.3px;
-        }
-        .app-header p {
-            color: var(--text-muted);
-            font-size: 0.88rem;
-            margin-top: 0.35rem;
-            font-weight: 500;
-        }
-
-        /* ============================================
-           TAB NAVIGATION
-           ============================================ */
-        .tab-nav {
-            display: flex;
-            gap: 4px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-lg);
-            padding: 4px;
-            overflow-x: auto;
-        }
-        .tab-btn {
-            flex: 1;
-            min-width: 0;
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-family: var(--font-sans);
-            font-size: 0.85rem;
-            font-weight: 600;
-            padding: 0.7rem 0.6rem;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: all var(--transition-normal);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            white-space: nowrap;
-            position: relative;
-        }
-        .tab-btn:hover {
-            color: var(--text-primary);
-            background: rgba(91, 124, 247, 0.08);
-        }
-        .tab-btn.active {
-            color: #fff;
-            background: var(--accent);
-            box-shadow: 0 2px 12px var(--accent-glow);
-        }
-        .tab-btn .tab-num {
-            font-size: 0.7rem;
-            font-weight: 700;
-            background: rgba(255,255,255,0.15);
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .tab-btn.active .tab-num {
-            background: rgba(255,255,255,0.25);
-        }
-
-        /* ============================================
-           TAB CONTENT
-           ============================================ */
-        .tab-content {
-            display: none;
-            flex-direction: column;
-            gap: 1.25rem;
-            animation: fadeSlideIn 0.3s ease;
-        }
-        .tab-content.active { display: flex; }
-
-        @keyframes fadeSlideIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ============================================
-           CARDS
-           ============================================ */
-        .card {
-            background: var(--bg-elevated);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-lg);
-            padding: 1.25rem;
-            box-shadow: var(--shadow-sm);
-            transition: border-color var(--transition-normal);
-        }
-        .card:hover { border-color: var(--border-default); }
-
-        .card-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-primary);
-        }
-        .card-title .icon {
-            font-size: 1.1rem;
-        }
-
-        /* Info Banner */
-        .info-banner {
-            background: rgba(91, 124, 247, 0.06);
-            border: 1px solid rgba(91, 124, 247, 0.2);
-            border-radius: var(--radius-md);
-            padding: 1rem 1.25rem;
-            font-size: 0.88rem;
-            color: var(--text-secondary);
-            line-height: 1.7;
-        }
-        .info-banner strong { color: var(--accent); }
-        .info-banner.purple {
-            background: var(--purple-dim);
-            border-color: rgba(167, 139, 250, 0.25);
-        }
-        .info-banner.purple strong { color: var(--purple); }
-
-        /* ============================================
-           DROP ZONE
-           ============================================ */
-        .drop-zone {
-            border: 2px dashed var(--border-default);
-            border-radius: var(--radius-md);
-            padding: 2rem 1rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all var(--transition-normal);
-            background: rgba(6, 8, 15, 0.4);
-            position: relative;
-            overflow: hidden;
-        }
-        .drop-zone::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at center, var(--accent-glow), transparent 70%);
-            opacity: 0;
-            transition: opacity var(--transition-normal);
-        }
-        .drop-zone:hover::before,
-        .drop-zone.dragover::before { opacity: 1; }
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--accent);
-            transform: translateY(-1px);
-        }
-        .drop-zone .dz-icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; opacity: 0.6; }
-        .drop-zone .dz-text { color: var(--text-secondary); font-size: 0.9rem; position: relative; z-index: 1; }
-        .drop-zone .dz-text strong { color: var(--accent); }
-        .drop-zone input[type="file"] { display: none; }
-
-        .file-info {
-            margin-top: 0.75rem;
-            padding: 0.65rem 1rem;
-            background: var(--success-dim);
-            border: 1px solid rgba(52, 211, 153, 0.2);
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            color: var(--success);
-            font-weight: 500;
-            display: none;
-            word-break: break-all;
-        }
-
-        /* ============================================
-           FORM ELEMENTS
-           ============================================ */
-        textarea {
-            width: 100%;
-            height: 200px;
-            background: var(--bg-base);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            color: #7fa0ff;
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            padding: 0.85rem;
-            resize: vertical;
-            line-height: 1.65;
-            transition: border-color var(--transition-fast);
-        }
-        textarea:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
-        textarea[readonly] { color: var(--text-secondary); cursor: default; }
-
-        .input-text {
-            width: 100%;
-            background: var(--bg-base);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-family: var(--font-sans);
-            padding: 0.65rem 0.85rem;
-            font-size: 0.9rem;
-            transition: border-color var(--transition-fast);
-        }
-        .input-text:focus { outline: none; border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
-
-        select {
-            background: var(--bg-base);
-            color: var(--text-primary);
-            border: 1px solid var(--border-subtle);
-            padding: 0.4rem 0.6rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            font-family: var(--font-sans);
-            cursor: pointer;
-        }
-        select:focus { outline: none; border-color: var(--border-focus); }
-
-        label { font-size: 0.88rem; color: var(--text-secondary); font-weight: 500; }
-        .field-group { display: flex; flex-direction: column; gap: 0.4rem; }
-
-        /* Safe Mode Panel */
-        .safe-mode-panel {
-            margin-top: 1rem;
-            background: rgba(6, 8, 15, 0.5);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: 1rem 1.25rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .safe-mode-panel .lock-label {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--success);
-            font-weight: 600;
-        }
-        .safe-mode-panel .sub-option {
-            margin-left: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        /* ============================================
-           BUTTONS
-           ============================================ */
-        .btn {
-            background: var(--accent);
-            color: #fff;
-            border: none;
-            padding: 0.85rem 1.5rem;
-            font-family: var(--font-sans);
-            font-size: 0.95rem;
-            font-weight: 700;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: all var(--transition-fast);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            width: 100%;
-            letter-spacing: 0.2px;
-            position: relative;
-            overflow: hidden;
-        }
-        .btn::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent);
-            pointer-events: none;
-        }
-        .btn:hover:not(:disabled) {
-            background: var(--accent-hover);
-            box-shadow: var(--shadow-glow);
-            transform: translateY(-1px);
-        }
-        .btn:active:not(:disabled) { transform: translateY(0); }
-        .btn:disabled {
-            background: var(--bg-surface);
-            color: var(--text-muted);
-            cursor: not-allowed;
-            border: 1px solid var(--border-subtle);
-        }
-        .btn:disabled::after { display: none; }
-
-        .btn-warning { background: var(--warning); color: var(--text-inverse); }
-        .btn-warning:hover:not(:disabled) { background: #e5a911; box-shadow: 0 0 24px rgba(251, 191, 36, 0.25); }
-
-        .btn-analyze { background: linear-gradient(135deg, #f59e0b, #f97316); color: var(--text-inverse); }
-        .btn-analyze:hover:not(:disabled) { box-shadow: 0 0 24px rgba(249, 115, 22, 0.3); }
-
-        .btn-secondary {
-            background: var(--bg-surface);
-            color: var(--text-secondary);
-            border: 1px solid var(--border-subtle);
-            padding: 0.55rem 1rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all var(--transition-fast);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            width: auto;
-        }
-        .btn-secondary::after { display: none; }
-        .btn-secondary:hover { background: rgba(91, 124, 247, 0.1); color: var(--accent); border-color: rgba(91, 124, 247, 0.3); }
-
-        .example-btn {
-            background: none;
-            border: 1px solid var(--border-subtle);
-            color: var(--text-secondary);
-            font-family: var(--font-sans);
-            font-size: 0.8rem;
-            font-weight: 600;
-            padding: 0.35rem 0.75rem;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all var(--transition-fast);
-        }
-        .example-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(91, 124, 247, 0.05); }
-
-        .actions-bar {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-
-        /* ============================================
-           PROGRESS BAR
-           ============================================ */
-        .progress-container {
-            display: none;
-        }
-        .progress-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-        }
-        .progress-header .label { color: var(--accent); }
-        .progress-header .percent { color: var(--success); font-family: var(--font-mono); }
-        .progress-track {
-            width: 100%;
-            background: var(--bg-base);
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-            border: 1px solid var(--border-subtle);
-        }
-        .progress-fill {
-            width: 0%;
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent), var(--success));
-            border-radius: 4px;
-            transition: width 0.15s ease;
-        }
-
-        /* ============================================
-           CONSOLE / LOG
-           ============================================ */
-        .console {
-            max-height: 220px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            padding: 0.25rem 0;
-        }
-        .console::-webkit-scrollbar { width: 5px; }
-        .console::-webkit-scrollbar-track { background: transparent; }
-        .console::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
-
-        .log-item {
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            padding: 0.35rem 0.65rem;
-            border-radius: var(--radius-sm);
-            line-height: 1.5;
-            word-break: break-all;
-        }
-        .log-info { color: var(--text-secondary); background: rgba(91, 124, 247, 0.04); }
-        .log-success { color: var(--success); background: var(--success-dim); }
-        .log-error { color: var(--danger); background: var(--danger-dim); }
-        .log-warn { color: var(--warning); background: var(--warning-dim); }
-
-        /* ============================================
-           DATA TABLES
-           ============================================ */
-        .table-container {
-            overflow-x: auto;
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-        }
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.83rem;
-        }
-        .data-table th {
-            background: var(--bg-surface);
-            color: var(--text-secondary);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.72rem;
-            letter-spacing: 0.5px;
-            padding: 0.7rem 0.85rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border-subtle);
-            position: sticky;
-            top: 0;
-            white-space: nowrap;
-        }
-        .data-table td {
-            padding: 0.6rem 0.85rem;
-            border-bottom: 1px solid rgba(99, 117, 171, 0.08);
-            color: var(--text-secondary);
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-        }
-        .data-table tbody tr:hover { background: rgba(91, 124, 247, 0.04); }
-        .data-table tbody tr:last-child td { border-bottom: none; }
-
-        /* ============================================
-           BADGES
-           ============================================ */
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 0.2rem 0.55rem;
-            border-radius: 4px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            font-family: var(--font-sans);
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-        .badge-orig { background: rgba(99, 117, 171, 0.2); color: var(--text-secondary); }
-        .badge-mod { background: var(--accent-glow); color: #93b4ff; }
-        .badge-added { background: var(--success-dim); color: var(--success); }
-        .badge-removed { background: var(--danger-dim); color: var(--danger); }
-        .badge-modified { background: var(--warning-dim); color: var(--warning); }
-        .badge-core { background: rgba(91, 124, 247, 0.2); color: #7fa0ff; }
-        .badge-config { background: var(--warning-dim); color: var(--warning); }
-        .badge-media { background: var(--success-dim); color: var(--success); }
-        .badge-data { background: rgba(99, 117, 171, 0.15); color: var(--text-muted); }
-        .badge-risk { background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(248, 113, 113, 0.3); }
-        .badge-found { background: var(--purple-dim); color: var(--purple); }
-
-        /* ============================================
-           STATS DASHBOARD
-           ============================================ */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.75rem;
-        }
-        @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-
-        .stat-card {
-            background: var(--bg-elevated);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            text-align: center;
-        }
-        .stat-card .stat-value {
-            font-size: 1.6rem;
-            font-weight: 800;
-            font-family: var(--font-mono);
-            margin-top: 0.25rem;
-        }
-        .stat-card .stat-label {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* ============================================
-           TOAST NOTIFICATION
-           ============================================ */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: var(--bg-elevated);
-            border: 1px solid var(--success);
-            color: var(--success);
-            padding: 0.7rem 1.4rem;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            font-size: 0.9rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(52, 211, 153, 0.15);
-            display: none;
-            z-index: 9999;
-            animation: toastIn 0.3s ease;
-        }
-        @keyframes toastIn {
-            from { opacity: 0; transform: translateY(12px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        /* ============================================
-           SUSPICIOUS LIST
-           ============================================ */
-        .suspicious-list {
-            list-style: none;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-        }
-        .suspicious-list li {
-            padding: 0.5rem 0.75rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            border-left: 3px solid var(--danger);
-            background: var(--danger-dim);
-        }
-        .suspicious-list li.clean {
-            border-left-color: var(--success);
-            background: var(--success-dim);
-            color: var(--success);
-        }
-        .suspicious-list .file-name { color: var(--danger); font-weight: 600; }
-        .suspicious-list .file-path { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
-
-        /* Checkbox custom */
-        input[type="checkbox"] {
-            accent-color: var(--success);
-            width: 16px;
-            height: 16px;
-        }
+        body { background-color: #0f172a; color: #f8fafc; overflow-x: hidden; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-header { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .text-gradient { background: linear-gradient(135deg, #a5b4fc 0%, #c084fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-gradient { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); transition: all 0.3s ease; }
+        .btn-gradient:hover { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+        .tab-active { background: rgba(99, 102, 241, 0.15); color: #818cf8 !important; border-color: #818cf8 !important; }
+        .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .bg-mesh { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.15) 0px, transparent 50%); }
     </style>
 </head>
-<body>
+<body class="antialiased selection:bg-primary-500 selection:text-white">
 
-<div class="app-container" id="app">
-    <!-- ==================== HEADER ==================== -->
-    <header class="app-header">
-        <span class="logo-icon">⚙️</span>
-        <h1>Universal Binary & IPA Patcher</h1>
-        <p>Vá Hex · Leak Offset · So Sánh Cấu Trúc · Truy Vết Text · Phân Tích Sâu</p>
-    </header>
+    <div class="bg-mesh"></div>
 
-    <!-- ==================== TAB NAV ==================== -->
-    <nav class="tab-nav">
-        <button class="tab-btn active" data-tab="patcher">
-            <span class="tab-num">1</span> Vá Hex
-        </button>
-        <button class="tab-btn" data-tab="diff">
-            <span class="tab-num">2</span> Leak Offset
-        </button>
-        <button class="tab-btn" data-tab="ipa">
-            <span class="tab-num">3</span> So Sánh ZIP
-        </button>
-        <button class="tab-btn" data-tab="search">
-            <span class="tab-num">4</span> Truy Vết
-        </button>
-        <button class="tab-btn" data-tab="analyzer">
-            <span class="tab-num">5</span> Phân Tích
-        </button>
+    <!-- Header -->
+    <nav class="glass-header sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-microphone-lines text-white text-sm"></i>
+                </div>
+                <h1 class="font-bold text-lg md:text-xl tracking-wide text-white">AI Media <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Studio Pro</span></h1>
+            </div>
+            
+            <div class="flex items-center gap-2 md:gap-4">
+                <div id="apiStatusBadge" class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border">
+                    <div id="apiStatusDot" class="w-2 h-2 rounded-full"></div>
+                    <span id="apiStatusText">Kiểm tra API...</span>
+                </div>
+
+                <button onclick="toggleSettings()" class="text-slate-400 hover:text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium hover:bg-slate-800">
+                    <i class="fa-solid fa-sliders"></i> <span class="hidden sm:inline">Cấu hình</span>
+                </button>
+            </div>
+        </div>
     </nav>
 
-    <!-- ==================== TAB 1: HEX PATCHER ==================== -->
-    <section class="tab-content active" id="tab-patcher">
-        <div class="card">
-            <div class="card-title"><span class="icon">📂</span> Chọn File Binary</div>
-            <div class="drop-zone" id="dz-patch">
-                <span class="dz-icon">⬆️</span>
-                <p class="dz-text">Kéo & thả file hoặc <strong>Nhấp để chọn</strong></p>
-                <input type="file" id="fi-patch">
-            </div>
-            <div class="file-info" id="info-patch"></div>
+    <!-- Main Workspace -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-12">
+        
+        <div class="text-center mb-8 md:mb-12">
+            <h2 class="text-2xl md:text-5xl font-bold mb-3 md:mb-4 tracking-tight text-white">
+                Hệ thống <span class="text-gradient">AI Đa Năng</span>
+            </h2>
+            <p class="text-slate-400 max-w-2xl mx-auto text-xs md:text-base leading-relaxed px-4">
+                Trích xuất văn bản từ phương tiện, cấu trúc lại câu từ và nhân bản giọng nói trực tiếp.
+            </p>
         </div>
 
-        <div class="card">
-            <div class="card-title" style="justify-content: space-between;">
-                <span><span class="icon">📝</span> Nhập Offset & Mã Hex</span>
-                <button class="example-btn" id="btnLoadExample">Tải Mẫu</button>
+        <div class="glass-panel rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-700">
+            
+            <!-- Sidebar Navigation (Lưới 2x2 cho Mobile) -->
+            <div class="w-full md:w-64 bg-slate-850/50 border-b md:border-b-0 md:border-r border-slate-700/50 p-4 grid grid-cols-2 md:flex md:flex-col gap-2">
+                <button onclick="switchTab('upload')" id="tab-btn-upload" class="tab-btn w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-3 px-2 md:px-4 py-3 rounded-xl text-center md:text-left font-medium text-slate-300 hover:bg-slate-800 border-2 md:border-0 md:border-l-3 border-transparent md:border-transparent tab-active text-xs md:text-base">
+                    <i class="fa-solid fa-cloud-arrow-up text-lg md:text-base md:w-5 text-indigo-400"></i> <span class="truncate">Trích xuất File</span>
+                </button>
+                <button onclick="switchTab('link')" id="tab-btn-link" class="tab-btn w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-3 px-2 md:px-4 py-3 rounded-xl text-center md:text-left font-medium text-slate-400 hover:bg-slate-800 border-2 md:border-0 md:border-l-3 border-transparent md:border-transparent text-xs md:text-base">
+                    <i class="fa-solid fa-link text-lg md:text-base md:w-5 text-purple-400"></i> <span class="truncate">Từ Link MXH</span>
+                </button>
+                <button onclick="switchTab('rewrite')" id="tab-btn-rewrite" class="tab-btn w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-3 px-2 md:px-4 py-3 rounded-xl text-center md:text-left font-medium text-slate-400 hover:bg-slate-800 border-2 md:border-0 md:border-l-3 border-transparent md:border-transparent text-xs md:text-base">
+                    <i class="fa-solid fa-wand-magic-sparkles text-lg md:text-base md:w-5 text-pink-400"></i> <span class="truncate">Viết lại Text</span>
+                </button>
+                <button onclick="switchTab('clone')" id="tab-btn-clone" class="tab-btn w-full flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-3 px-2 md:px-4 py-3 rounded-xl text-center md:text-left font-medium text-slate-400 hover:bg-slate-800 border-2 md:border-0 md:border-l-3 border-transparent md:border-transparent text-xs md:text-base">
+                    <i class="fa-solid fa-microphone-waveform text-lg md:text-base md:w-5 text-emerald-400"></i> <span class="truncate">Giọng nói</span>
+                </button>
             </div>
-            <textarea id="patchInput" placeholder="Ví dụ:&#10;0x554b9ec: 200080D2 C0035FD6 // Comment...&#10;0x1234: 00 01 02 03"></textarea>
-        </div>
 
-        <button class="btn" id="patchBtn" disabled>🚀 Bắt Đầu Patch & Tải File Về</button>
+            <!-- Main Content Area -->
+            <div class="flex-1 p-5 md:p-8 relative min-h-[420px]">
+                
+                <!-- Tab: Upload File -->
+                <div id="tab-content-upload" class="block animate-fade-in">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold text-white mb-1">Tải lên File Media</h3>
+                        <p class="text-sm text-slate-400">Tự động nén và xử lý âm thanh tốc độ cao với Gemini 3.1 Flash Lite.</p>
+                    </div>
+                    
+                    <div id="dropZone" class="border-2 border-dashed border-slate-600 bg-slate-800/30 rounded-2xl p-8 md:p-10 flex flex-col items-center justify-center text-center hover:border-indigo-500 hover:bg-slate-800/50 transition-all cursor-pointer relative mb-6 group">
+                        <!-- Mở rộng nhận diện mọi định dạng cho Safari/iPhone -->
+                        <input type="file" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="audio/*, video/*, .mp3, .wav, .m4a, .mp4, .mov, audio/mpeg, audio/wav, audio/x-m4a, video/mp4">
+                        <div class="w-14 h-14 md:w-16 md:h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg border border-slate-700">
+                            <i class="fa-solid fa-photo-film text-xl md:text-2xl text-indigo-400"></i>
+                        </div>
+                        <p class="font-medium text-slate-200 text-base md:text-lg mb-1">Kéo thả file vào đây</p>
+                        <p class="text-slate-500 text-xs md:text-sm">Hỗ trợ MP4, MP3, WAV, M4A... (Tối ưu dưới 20MB)</p>
+                        <div id="fileSelectedName" class="mt-4 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-lg text-sm font-medium hidden flex items-center gap-2 max-w-full truncate"></div>
+                    </div>
 
-        <div class="card">
-            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
-            <div class="console" id="log-patch">
-                <div class="log-item log-info">[Hệ thống] Sẵn sàng vá file Hex.</div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ==================== TAB 2: LEAK OFFSET ==================== -->
-    <section class="tab-content" id="tab-diff">
-        <div class="grid-2">
-            <div class="card">
-                <div class="card-title"><span class="icon">📄</span> File Gốc (Original)</div>
-                <div class="drop-zone" id="dz-orig">
-                    <span class="dz-icon">📁</span>
-                    <p class="dz-text">Chọn <strong>file gốc</strong></p>
-                    <input type="file" id="fi-orig">
+                    <button onclick="processFile()" class="w-full btn-gradient text-white font-semibold py-4 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 group">
+                        <span>Phân tích bằng AI</span>
+                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </button>
                 </div>
-                <div class="file-info" id="info-orig"></div>
-            </div>
-            <div class="card">
-                <div class="card-title"><span class="icon">✏️</span> File Đã Sửa (Modded)</div>
-                <div class="drop-zone" id="dz-mod">
-                    <span class="dz-icon">📁</span>
-                    <p class="dz-text">Chọn <strong>file mod</strong></p>
-                    <input type="file" id="fi-mod">
+
+                <!-- Tab: Link URL -->
+                <div id="tab-content-link" class="hidden animate-fade-in">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold text-white mb-1">Trích xuất từ Đám mây</h3>
+                        <p class="text-sm text-slate-400">Hỗ trợ TikTok, Facebook, Instagram (Không cần tải file về máy).</p>
+                    </div>
+
+                    <div class="mb-6 relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-link text-slate-500"></i>
+                        </div>
+                        <input type="url" id="linkInput" class="block w-full pl-11 pr-4 py-4 bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all shadow-inner text-sm md:text-base" placeholder="Dán link Video vào đây...">
+                    </div>
+
+                    <button onclick="processLink()" class="w-full btn-gradient text-white font-semibold py-4 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 group">
+                        <span>Bắt đầu Trích xuất</span>
+                        <i class="fa-solid fa-wand-magic-sparkles group-hover:rotate-12 transition-transform"></i>
+                    </button>
                 </div>
-                <div class="file-info" id="info-mod"></div>
-            </div>
-        </div>
 
-        <div class="card progress-container" id="diffProgress">
-            <div class="progress-header">
-                <span class="label" id="diffProgressLabel">Đang quét...</span>
-                <span class="percent" id="diffProgressPercent">0%</span>
-            </div>
-            <div class="progress-track">
-                <div class="progress-fill" id="diffProgressBar"></div>
-            </div>
-        </div>
+                <!-- Tab: Rewrite -->
+                <div id="tab-content-rewrite" class="hidden animate-fade-in">
+                    <div class="mb-6 flex justify-between items-end">
+                        <div>
+                            <h3 class="text-xl font-semibold text-white mb-1">Cấu trúc lại Văn bản</h3>
+                            <p class="text-sm text-slate-400">Làm mượt câu từ, sửa lỗi chính tả nhưng vẫn giữ nguyên ý gốc.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <textarea id="rewriteInput" class="block w-full p-4 bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all shadow-inner resize-none h-44 leading-relaxed text-sm md:text-base" placeholder="Dán đoạn văn bản cần chỉnh sửa vào đây..."></textarea>
+                    </div>
 
-        <button class="btn" id="diffBtn" disabled>🔍 Bắt Đầu Quét & Leak Offset</button>
-
-        <div class="card" id="diffResultCard" style="display: none;">
-            <div class="card-title" style="justify-content: space-between;">
-                <span><span class="icon">📊</span> Kết Quả Leak Offset (Hex Dump)</span>
-                <span id="diffStatsBadge" style="font-size: 0.85rem; color: var(--success); font-weight: 700;"></span>
-            </div>
-            <div class="actions-bar">
-                <button class="btn-secondary" id="btnCopyLeak">📋 Copy Patch</button>
-                <button class="btn-secondary" id="btnSendToPatcher">➡️ Chuyển sang Vá Hex</button>
-            </div>
-            <textarea id="leakedTextarea" readonly style="height: 140px; margin-bottom: 1rem;"></textarea>
-            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
-                <table class="data-table">
-                    <!-- Bảng được cập nhật giao diện như Hex Editor -->
-                    <thead><tr><th>#</th><th>Offset</th><th>Mã Hex Gốc</th><th>Mã Hex Sửa</th><th>ASCII (Sửa)</th></tr></thead>
-                    <tbody id="diffTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
-            <div class="console" id="log-diff"></div>
-        </div>
-    </section>
-
-    <!-- ==================== TAB 3: ZIP/IPA COMPARE ==================== -->
-    <section class="tab-content" id="tab-ipa">
-        <div class="info-banner">
-            💡 So sánh cấu trúc file nén (<strong>.ipa</strong>, <strong>.apk</strong>, <strong>.zip</strong>). Báo cáo chính xác file nào được thêm, xóa hay sửa đổi.
-        </div>
-        <div class="grid-2">
-            <div class="card">
-                <div class="card-title"><span class="icon">📦</span> File Gốc</div>
-                <div class="drop-zone" id="dz-ipa-orig">
-                    <span class="dz-icon">📁</span>
-                    <p class="dz-text">Chọn file gốc</p>
-                    <input type="file" id="fi-ipa-orig">
+                    <button onclick="processRewrite()" class="w-full btn-gradient text-white font-semibold py-4 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 group">
+                        <span>Nâng cấp Văn bản</span>
+                        <i class="fa-solid fa-pen-nib group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform"></i>
+                    </button>
                 </div>
-                <div class="file-info" id="info-ipa-orig"></div>
-            </div>
-            <div class="card">
-                <div class="card-title"><span class="icon">📦</span> File Mod</div>
-                <div class="drop-zone" id="dz-ipa-mod">
-                    <span class="dz-icon">📁</span>
-                    <p class="dz-text">Chọn file mod</p>
-                    <input type="file" id="fi-ipa-mod">
+
+                <!-- Tab: Clone Voice -->
+                <div id="tab-content-clone" class="hidden animate-fade-in">
+                    <div class="mb-5">
+                        <h3 class="text-xl font-semibold text-white mb-1 flex items-center gap-2">
+                            <i class="fa-solid fa-microphone-waveform text-emerald-400"></i> Nhân bản Giọng đọc
+                        </h3>
+                        <p class="text-sm text-slate-400">Tải lên file mẫu giọng nói của bạn để AI tổng hợp giọng đọc tương ứng.</p>
+                    </div>
+
+                    <div class="space-y-4 mb-5">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">1. Tải lên file mẫu giọng nói (MP3/WAV)</label>
+                            <div class="border border-slate-700 bg-slate-800/50 rounded-xl p-3 md:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                                        <i class="fa-solid fa-microphone"></i>
+                                    </div>
+                                    <div class="truncate">
+                                        <p id="voiceFileName" class="text-sm font-medium text-slate-300 truncate">Chưa chọn file mẫu</p>
+                                        <p class="text-xs text-slate-500 hidden md:block">Khuyên dùng file rõ tiếng 15-30 giây</p>
+                                    </div>
+                                </div>
+                                <label class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors flex-shrink-0 text-center">
+                                    Chọn file <input type="file" id="voiceFileInput" class="hidden" accept="audio/*, .mp3, .wav, .m4a">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">2. Nhập văn bản cần đọc</label>
+                            <textarea id="cloneTextInput" class="block w-full p-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all shadow-inner resize-none h-28 text-sm leading-relaxed" placeholder="Nhập nội dung bạn muốn AI phát âm bằng giọng của bạn..."></textarea>
+                        </div>
+                    </div>
+
+                    <button onclick="processVoiceClone()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-4 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 group">
+                        <span>Tạo giọng đọc</span>
+                        <i class="fa-solid fa-bolt group-hover:scale-110 transition-transform"></i>
+                    </button>
                 </div>
-                <div class="file-info" id="info-ipa-mod"></div>
-            </div>
-        </div>
 
-        <button class="btn" id="ipaDiffBtn" disabled>📦 So Sánh Cấu Trúc File Nén</button>
-
-        <div class="card" id="ipaResultCard" style="display: none;">
-            <div class="card-title" style="justify-content: space-between;">
-                <span><span class="icon">📊</span> Báo Cáo Thay Đổi</span>
-                <span id="ipaStatsBadge" style="font-size: 0.85rem; color: var(--success); font-weight: 700;"></span>
-            </div>
-            <div class="table-container" style="max-height: 400px; overflow-y: auto;">
-                <table class="data-table">
-                    <thead><tr><th>#</th><th>Trạng Thái</th><th>Tên File</th><th>KT Gốc</th><th>KT Mod</th></tr></thead>
-                    <tbody id="ipaTableBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
-            <div class="console" id="log-ipa"></div>
-        </div>
-    </section>
-
-    <!-- ==================== TAB 4: SEARCH & REPLACE ==================== -->
-    <section class="tab-content" id="tab-search">
-        <div class="info-banner purple">
-            <strong>🕵️ TRUY VẾT & CHỈNH SỬA (HEX SEARCH & REPLACE)</strong><br>
-            Bảo toàn 100% cấu trúc Hex gốc. Chỉ thay đổi đúng vị trí yêu cầu. Chống Crash tuyệt đối.
-        </div>
-
-        <div class="card">
-            <div class="card-title"><span class="icon">📂</span> Chọn File Cần Truy Vết</div>
-            <div class="drop-zone" id="dz-search">
-                <span class="dz-icon">🔎</span>
-                <p class="dz-text">Kéo & thả file hoặc <strong>Nhấp để chọn</strong> (IPA, APK, ZIP hoặc file lẻ)</p>
-                <input type="file" id="fi-search">
-            </div>
-            <div class="file-info" id="info-search"></div>
-        </div>
-
-        <div class="card">
-            <div class="card-title"><span class="icon">⚙️</span> Thiết Lập Truy Vết</div>
-            <div class="grid-2">
-                <div class="field-group">
-                    <label>🔍 Chuỗi cần tìm</label>
-                    <input type="text" id="searchInput" class="input-text" placeholder="Nhập text cần tìm...">
+                <!-- Loading State -->
+                <div id="loadingState" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 hidden flex-col items-center justify-center rounded-2xl md:rounded-l-none md:rounded-r-2xl">
+                    <div class="relative w-16 h-16 mb-4">
+                        <div class="absolute inset-0 border-4 border-indigo-500/20 rounded-full"></div>
+                        <div class="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+                    </div>
+                    <p id="loadingText" class="text-indigo-300 font-medium tracking-wide animate-pulse text-center px-4">Đang xử lý dữ liệu...</p>
                 </div>
-                <div class="field-group">
-                    <label>✏️ Thay thế bằng (tuỳ chọn)</label>
-                    <input type="text" id="replaceInput" class="input-text" placeholder="Để trống nếu chỉ tìm kiếm...">
-                </div>
+
             </div>
-            <div class="safe-mode-panel">
-                <div class="lock-label">
-                    <input type="checkbox" checked disabled>
-                    <span>🔒 Khóa Dung Lượng (Safe Mode Bắt Buộc)</span>
-                </div>
-                <div class="sub-option">
-                    <label style="font-size: 0.85rem;">Phương pháp bù byte:</label>
-                    <select id="padMethod">
-                        <option value="null">Null Bytes (0x00)</option>
-                        <option value="space">Khoảng trắng (0x20)</option>
-                    </select>
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultSection" class="hidden mt-8 glass-panel rounded-2xl shadow-2xl border border-slate-700 overflow-hidden animate-fade-in">
+            <div class="bg-slate-800/50 border-b border-slate-700 px-4 md:px-6 py-4 flex flex-col md:flex-row justify-between md:items-center gap-4">
+                <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-400"></i> Kết quả
+                </h3>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btnSpeak" onclick="toggleSpeech()" class="flex-1 md:flex-none justify-center items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors border border-slate-600 flex">
+                        <i class="fa-solid fa-volume-high text-blue-400"></i> Nghe
+                    </button>
+                    <button id="btnDownloadTTS" onclick="downloadAudio()" class="flex-1 md:flex-none justify-center items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors border border-slate-600 flex">
+                        <i class="fa-solid fa-download text-emerald-400"></i> MP3
+                    </button>
+                    <button onclick="copyResult()" class="flex-1 md:flex-none justify-center items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition-colors shadow-lg flex">
+                        <i class="fa-regular fa-copy"></i> Chép
+                    </button>
                 </div>
             </div>
-        </div>
-
-        <div class="grid-2">
-            <button class="btn" id="btnOnlySearch" disabled>🔍 Chỉ Truy Vết</button>
-            <button class="btn btn-warning" id="btnReplaceExport" disabled>⚡ Thay Thế & Xuất File</button>
-        </div>
-
-        <div class="card" id="searchResultCard" style="display: none;">
-            <div class="card-title" style="justify-content: space-between;">
-                <span><span class="icon">📊</span> Kết Quả Truy Vết</span>
-                <span id="searchStatsBadge" style="font-size: 0.85rem; color: var(--purple); font-weight: 700;"></span>
-            </div>
-            <div class="table-container" style="max-height: 350px; overflow-y: auto;">
-                <table class="data-table">
-                    <thead><tr><th>#</th><th>Nằm Trong File</th><th>Offset</th><th>Trạng Thái</th></tr></thead>
-                    <tbody id="searchTableBody"></tbody>
-                </table>
+            <div class="p-4 md:p-6">
+                <textarea id="resultText" class="w-full h-48 md:h-72 p-0 border-0 bg-transparent resize-none focus:ring-0 text-slate-300 leading-relaxed text-base md:text-lg" readonly></textarea>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
-            <div class="console" id="log-search"></div>
-        </div>
-    </section>
+    </main>
 
-    <!-- ==================== TAB 5: DEEP ANALYZER ==================== -->
-    <section class="tab-content" id="tab-analyzer">
-        <div class="card">
-            <div class="card-title"><span class="icon">📂</span> Chọn File (IPA / APK / ZIP)</div>
-            <div class="drop-zone" id="dz-analyzer">
-                <span class="dz-icon">🛡️</span>
-                <p class="dz-text">Kéo & thả file hoặc <strong>Nhấp để chọn</strong></p>
-                <input type="file" id="fi-analyzer">
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4">
+        <div id="settingsContent" class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300">
+            <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-850">
+                <h3 class="font-semibold text-lg text-white"><i class="fa-solid fa-sliders text-indigo-400 mr-2"></i> Cài đặt AI & Máy chủ</h3>
+                <button onclick="toggleSettings()" class="text-slate-500 hover:text-white transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
-            <div class="file-info" id="info-analyzer"></div>
-        </div>
-
-        <button class="btn btn-analyze" id="btnAnalyze" disabled>🚀 Bắt Đầu Phân Tích Sâu</button>
-
-        <div id="analyzerDashboard" style="display: none; flex-direction: column; gap: 1rem;">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Tổng File</div>
-                    <div class="stat-value" id="anaTotalFiles" style="color: var(--accent);">0</div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Google Gemini API Key</label>
+                    <input type="password" id="cfgApiKey" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 text-sm outline-none font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                    <p class="text-xs text-slate-500 mt-1">Hỗ trợ cả chuẩn cũ (AIza...) và chuẩn mới (AQ...)</p>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">File Core</div>
-                    <div class="stat-value" id="anaCoreFiles" style="color: #7fa0ff;">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Config</div>
-                    <div class="stat-value" id="anaConfigFiles" style="color: var(--warning);">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Media</div>
-                    <div class="stat-value" id="anaMediaFiles" style="color: var(--success);">0</div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Máy chủ tải Link MXH (Backend)</label>
+                    <input type="text" id="cfgBackend" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 text-sm outline-none font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
                 </div>
             </div>
-
-            <div class="card" style="border-color: rgba(248, 113, 113, 0.3);">
-                <div class="card-title" style="color: var(--danger);">⚠️ Cảnh Báo Hệ Thống</div>
-                <ul class="suspicious-list" id="suspiciousList"></ul>
-            </div>
-
-            <div class="table-container" style="max-height: 450px; overflow-y: auto;">
-                <table class="data-table">
-                    <thead><tr><th>Loại</th><th>Đường Dẫn</th><th>Kích Thước</th><th>Đánh Giá</th></tr></thead>
-                    <tbody id="analyzerTableBody"></tbody>
-                </table>
+            <div class="px-6 py-4 bg-slate-850 flex justify-end gap-3 border-t border-slate-800">
+                <button onclick="toggleSettings()" class="px-5 py-2 font-medium text-slate-400 hover:text-white transition-colors">Đóng</button>
+                <button onclick="saveSettings()" class="px-5 py-2 font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-lg transition-colors">Lưu hệ thống</button>
             </div>
         </div>
+    </div>
 
-        <div class="card">
-            <div class="card-title"><span class="icon">📋</span> Nhật Ký</div>
-            <div class="console" id="log-analyzer"></div>
-        </div>
-    </section>
-</div>
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
 
-<div class="toast" id="toast"></div>
+    <script>
+        // Cấu hình cứng để hệ thống tự động chạy
+        const DEFAULT_BACKEND = "https://audio-iyda.onrender.com";
+        const DEFAULT_MODEL = "gemini-3.1-flash-lite";
+        const HARDCODED_API_KEY = "AQ.Ab8RN6IbTx1ZKMgGJQAUxsSX_uyVPK0OCUzsmx3D6SdwW_9Xdg";
 
-<!-- ================================================================
-     APPLICATION LOGIC — Wrapped in IIFE to avoid global pollution
-     ================================================================ -->
-<script>
-(function() {
-    'use strict';
+        // Ép hệ thống dùng khóa mới nhất của bạn (xóa sạch dữ liệu cũ)
+        localStorage.setItem('gemini_api_key_v7', HARDCODED_API_KEY);
+        localStorage.setItem('backend_url_v7', DEFAULT_BACKEND);
 
-    // ==========================================
-    // UTILITIES
-    // ==========================================
+        let currentFile = null;
+        let currentVoiceFile = null;
+        let isProcessing = false;
 
-    /** Escape HTML to prevent XSS */
-    function esc(str) {
-        const el = document.createElement('span');
-        el.textContent = str;
-        return el.innerHTML;
-    }
+        function getActiveApiKey() { return localStorage.getItem('gemini_api_key_v7'); }
+        function getBackendUrl() { return localStorage.getItem('backend_url_v7'); }
 
-    /** Format file size */
-    function fmtSize(bytes) {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(2) + ' MB';
-    }
-
-    /** Show toast notification */
-    function showToast(msg) {
-        const t = document.getElementById('toast');
-        t.textContent = msg;
-        t.style.display = 'block';
-        setTimeout(() => t.style.display = 'none', 2200);
-    }
-
-    /** Download a Blob */
-    function downloadBlob(blob, name) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url); // Prevent memory leak
-    }
-
-    /** Add log entry to console */
-    function log(consoleId, msg, type = 'info') {
-        const con = document.getElementById(consoleId);
-        if (!con) return;
-        const d = document.createElement('div');
-        d.className = 'log-item log-' + type;
-        d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-        con.appendChild(d);
-        con.scrollTop = con.scrollHeight;
-    }
-
-    /** Parse hex bytes from string */
-    function parseHexBytes(hexStr) {
-        const clean = hexStr.replace(/[^0-9a-fA-F]/g, '');
-        if (clean.length % 2 !== 0) throw new Error('Số ký tự hex không hợp lệ (phải chẵn)');
-        const bytes = new Uint8Array(clean.length / 2);
-        for (let i = 0; i < clean.length; i += 2) {
-            bytes[i / 2] = parseInt(clean.substr(i, 2), 16);
-        }
-        return bytes;
-    }
-
-    /** Byte search algorithm */
-    function findAllOccurrences(source, pattern) {
-        const results = [];
-        if (!pattern.length || source.length < pattern.length) return results;
-        const last = pattern.length - 1;
-        const skip = new Int32Array(256).fill(pattern.length);
-        for (let i = 0; i < last; i++) skip[pattern[i]] = last - i;
-
-        let i = 0;
-        while (i <= source.length - pattern.length) {
-            let j = last;
-            while (j >= 0 && source[i + j] === pattern[j]) j--;
-            if (j < 0) {
-                results.push(i);
-                i += pattern.length;
+        function checkApiKeyStatus() {
+            const key = getActiveApiKey();
+            const badge = document.getElementById('apiStatusBadge');
+            const dot = document.getElementById('apiStatusDot');
+            const text = document.getElementById('apiStatusText');
+            
+            badge.classList.remove('hidden');
+            if (!key) {
+                badge.className = "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border border-amber-500/30 bg-amber-500/10 text-amber-400";
+                dot.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse";
+                text.innerText = "Chưa có API Key";
             } else {
-                i += Math.max(1, skip[source[i + last]]);
+                badge.className = "hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
+                dot.className = "w-2 h-2 rounded-full bg-emerald-500";
+                text.innerText = "API Sẵn sàng";
             }
         }
-        return results;
-    }
 
-    function readAsArrayBuffer(file) {
-        return new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result);
-            r.onerror = () => reject(new Error('Không thể đọc file: ' + file.name));
-            r.readAsArrayBuffer(file);
-        });
-    }
+        window.onload = checkApiKeyStatus;
 
-    function readSlice(file, start, end) {
-        return new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(new Uint8Array(r.result));
-            r.onerror = () => reject(new Error('Lỗi đọc slice'));
-            r.readAsArrayBuffer(file.slice(start, end));
-        });
-    }
+        function switchTab(tabId) {
+            if (isProcessing) return showToast("Hệ thống đang xử lý, vui lòng đợi...", "warning");
+            ['upload', 'link', 'rewrite', 'clone'].forEach(id => {
+                document.getElementById(`tab-content-${id}`).classList.add('hidden');
+                let btn = document.getElementById(`tab-btn-${id}`);
+                btn.className = btn.className.replace('tab-active', '').replace('border-indigo-500', 'border-transparent');
+                btn.classList.add('border-transparent');
+                let icon = btn.querySelector('i');
+                if(icon) icon.classList.replace('text-indigo-500', 'text-slate-400');
+            });
+            document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
+            let activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            if(window.innerWidth < 768) {
+                activeBtn.className = activeBtn.className.replace('border-transparent', 'border-indigo-500');
+            } else {
+                activeBtn.classList.add('border-l-3', 'border-indigo-500');
+            }
+            activeBtn.classList.add('tab-active');
+            document.getElementById('resultSection').classList.add('hidden');
+        }
 
-    function setupDropZone(dzId, inputId, infoId, callback) {
-        const dz = document.getElementById(dzId);
-        const fi = document.getElementById(inputId);
-        const info = document.getElementById(infoId);
-        if (!dz || !fi || !info) return;
+        const modal = document.getElementById('settingsModal');
+        const modalContent = document.getElementById('settingsContent');
 
-        dz.addEventListener('click', () => fi.click());
-        dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
-        dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
-        dz.addEventListener('drop', e => {
-            e.preventDefault();
-            dz.classList.remove('dragover');
-            if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+        function toggleSettings() {
+            if (modal.classList.contains('hidden')) {
+                document.getElementById('cfgBackend').value = getBackendUrl();
+                document.getElementById('cfgApiKey').value = getActiveApiKey();
+                modal.classList.remove('hidden');
+                setTimeout(() => { modal.classList.remove('opacity-0'); modalContent.classList.remove('scale-95'); }, 10);
+            } else {
+                modal.classList.add('opacity-0'); modalContent.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+        }
+
+        function saveSettings() {
+            let backend = document.getElementById('cfgBackend').value.trim();
+            if(backend.endsWith('/')) backend = backend.slice(0, -1);
+            let apiKey = document.getElementById('cfgApiKey').value.trim();
+            
+            localStorage.setItem('backend_url_v7', backend);
+            localStorage.setItem('gemini_api_key_v7', apiKey);
+            
+            checkApiKeyStatus();
+            toggleSettings();
+            showToast("Đã lưu cấu hình mới!", "success");
+        }
+
+        // File upload listeners
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileSelectedName = document.getElementById('fileSelectedName');
+
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-slate-800/60'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500', 'bg-slate-800/60'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault(); dropZone.classList.remove('border-indigo-500', 'bg-slate-800/60');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
         });
-        fi.addEventListener('change', e => {
-            if (e.target.files[0]) handleFile(e.target.files[0]);
-        });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
 
         function handleFile(file) {
-            info.style.display = 'block';
-            info.textContent = '✓ ' + file.name + ' (' + fmtSize(file.size) + ')';
-            callback(file);
+            currentFile = file;
+            fileSelectedName.innerHTML = `<i class="fa-solid fa-file-audio text-indigo-400 flex-shrink-0"></i> <span class="truncate">${file.name}</span>`;
+            fileSelectedName.classList.remove('hidden');
         }
-    }
 
-    // ==========================================
-    // TAB NAVIGATION
-    // ==========================================
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tab = btn.dataset.tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => {
-                c.classList.remove('active');
-                c.style.display = 'none';
-            });
-            btn.classList.add('active');
-            const target = document.getElementById('tab-' + tab);
-            if (target) {
-                target.classList.add('active');
-                target.style.display = 'flex';
+        const voiceFileInput = document.getElementById('voiceFileInput');
+        const voiceFileName = document.getElementById('voiceFileName');
+        voiceFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                currentVoiceFile = e.target.files[0];
+                voiceFileName.innerText = currentVoiceFile.name;
+                showToast("Đã tải lên file mẫu giọng nói!", "success");
             }
         });
-    });
 
-    // ==========================================
-    // TAB 1: HEX PATCHER
-    // ==========================================
-    let patchFile = null, patchBuffer = null;
-
-    setupDropZone('dz-patch', 'fi-patch', 'info-patch', async (file) => {
-        patchFile = file;
-        try {
-            patchBuffer = await readAsArrayBuffer(file);
-            document.getElementById('patchBtn').disabled = false;
-            log('log-patch', 'Đã nạp file "' + file.name + '" (' + fmtSize(file.size) + ') vào RAM!', 'success');
-        } catch (e) {
-            log('log-patch', e.message, 'error');
+        function setLoading(active, text = "") {
+            isProcessing = active;
+            const stateDiv = document.getElementById('loadingState');
+            const txt = document.getElementById('loadingText');
+            if (active) {
+                stateDiv.classList.remove('hidden'); stateDiv.classList.add('flex');
+                txt.innerText = text;
+                document.getElementById('resultSection').classList.add('hidden');
+            } else {
+                stateDiv.classList.add('hidden'); stateDiv.classList.remove('flex');
+            }
         }
-    });
 
-    document.getElementById('btnLoadExample').addEventListener('click', () => {
-        document.getElementById('patchInput').value =
-            '0x00554B9C: 20 00 80 D2 C0 03 5F D6 // Ví dụ thay đổi nhiều byte\n0x00001234: 00 01 02 03';
-    });
+        function showResult(text) {
+            document.getElementById('resultText').value = text;
+            document.getElementById('resultSection').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+        }
 
-    document.getElementById('patchBtn').addEventListener('click', () => {
-        if (!patchBuffer) return;
-        const input = document.getElementById('patchInput').value;
-        const buf = new Uint8Array(patchBuffer.slice(0));
-        let patchCount = 0, errorCount = 0;
-
-        input.split('\n').forEach((rawLine, lineNum) => {
-            const line = rawLine.split('//')[0].trim();
-            if (!line) return;
+        // ====== LÕI XỬ LÝ MỚI SỬ DỤNG HEADER x-goog-api-key ĐỂ HỖ TRỢ KHÓA AQ. ======
+        async function processFile() {
+            if (!currentFile) return showToast("Vui lòng chọn file trước!", "warning");
+            const apiKey = getActiveApiKey();
+            if (!apiKey) return showToast("Không tìm thấy API Key!", "error");
+            
+            setLoading(true, "Đang phân tích âm thanh bằng Gemini 3.1...");
             try {
-                const parts = line.split(/[:\s]+/).filter(Boolean);
-                if (parts.length < 2) throw new Error('Thiếu dữ liệu hex');
-                const offset = parseInt(parts[0], 16);
-                if (isNaN(offset)) throw new Error('Offset không hợp lệ');
-                const bytes = parseHexBytes(parts.slice(1).join(''));
-
-                if (offset < 0 || offset + bytes.length > buf.length) {
-                    throw new Error('Offset 0x' + offset.toString(16) + ' vượt ngoài file');
-                }
-
-                for (let i = 0; i < bytes.length; i++) buf[offset + i] = bytes[i];
-                patchCount++;
-                log('log-patch', '✓ Patch OK tại 0x' + offset.toString(16).toUpperCase() + ' (' + bytes.length + ' bytes)', 'success');
-            } catch (e) {
-                errorCount++;
-                log('log-patch', 'Dòng ' + (lineNum + 1) + ': ' + e.message, 'error');
-            }
-        });
-
-        if (patchCount > 0) {
-            downloadBlob(new Blob([buf]), patchFile.name + '_patched');
-            log('log-patch', '✅ Hoàn tất! ' + patchCount + ' patch, ' + errorCount + ' lỗi. File đã tải về.', 'success');
-        } else {
-            log('log-patch', '⚠ Không có patch nào được áp dụng.', 'warn');
-        }
-    });
-
-    // ==========================================
-    // TAB 2: LEAK OFFSET (BINARY DIFF)
-    // ==========================================
-    let diffOrigFile = null, diffModFile = null;
-
-    setupDropZone('dz-orig', 'fi-orig', 'info-orig', f => {
-        diffOrigFile = f;
-        if (diffModFile) document.getElementById('diffBtn').disabled = false;
-    });
-    setupDropZone('dz-mod', 'fi-mod', 'info-mod', f => {
-        diffModFile = f;
-        if (diffOrigFile) document.getElementById('diffBtn').disabled = false;
-    });
-
-    document.getElementById('diffBtn').addEventListener('click', async () => {
-        if (!diffOrigFile || !diffModFile) return;
-        const btn = document.getElementById('diffBtn');
-        btn.disabled = true;
-
-        const progressEl = document.getElementById('diffProgress');
-        const bar = document.getElementById('diffProgressBar');
-        const pctEl = document.getElementById('diffProgressPercent');
-        const labelEl = document.getElementById('diffProgressLabel');
-        progressEl.style.display = 'block';
-        bar.style.width = '0%';
-        document.getElementById('diffResultCard').style.display = 'none';
-
-        const total = Math.min(diffOrigFile.size, diffModFile.size);
-        const CHUNK = 8 * 1024 * 1024;
-        const MAX_DIFFS = 50000; // Tăng giới hạn lên vì giờ đã gộp dòng
-        let diffs = [];
-        let aborted = false;
-
-        log('log-diff', 'Bắt đầu quét ' + fmtSize(total) + '...', 'info');
-
-        try {
-            for (let off = 0; off < total; off += CHUNK) {
-                const end = Math.min(off + CHUNK, total);
-                const pct = Math.floor((end / total) * 100);
-                bar.style.width = pct + '%';
-                pctEl.textContent = pct + '%';
-                labelEl.textContent = 'Đang quét... ' + fmtSize(end) + ' / ' + fmtSize(total);
-
-                const [bO, bM] = await Promise.all([
-                    readSlice(diffOrigFile, off, end),
-                    readSlice(diffModFile, off, end)
-                ]);
-
-                for (let i = 0; i < bO.length; i++) {
-                    if (bO[i] !== bM[i]) {
-                        diffs.push({ off: off + i, o: bO[i], m: bM[i] });
-                        if (diffs.length >= MAX_DIFFS) {
-                            log('log-diff', '⚠ Đạt giới hạn byte thay đổi, dừng quét sớm.', 'warn');
-                            aborted = true;
-                            break;
-                        }
-                    }
-                }
-                if (aborted) break;
-
-                await new Promise(r => setTimeout(r, 0));
-            }
-
-            bar.style.width = '100%';
-            pctEl.textContent = '100%';
-            labelEl.textContent = 'Hoàn tất!';
-
-            // -----------------------------------------------------------------
-            // THUẬT TOÁN MỚI: GỘP CÁC BYTE LIÊN TIẾP NHAU (TỐI ĐA 8 BYTE/DÒNG)
-            // -----------------------------------------------------------------
-            let groupedDiffs = [];
-            if (diffs.length > 0) {
-                let currentGroup = {
-                    off: diffs[0].off,
-                    o: [diffs[0].o],
-                    m: [diffs[0].m]
-                };
-
-                for (let i = 1; i < diffs.length; i++) {
-                    // Nếu byte tiếp theo nằm ngay sát byte trước đó VÀ dòng hiện tại chưa quá 8 byte
-                    if (diffs[i].off === currentGroup.off + currentGroup.m.length && currentGroup.m.length < 8) {
-                        currentGroup.o.push(diffs[i].o);
-                        currentGroup.m.push(diffs[i].m);
-                    } else {
-                        // Đóng gói dòng cũ, mở dòng mới
-                        groupedDiffs.push(currentGroup);
-                        currentGroup = {
-                            off: diffs[i].off,
-                            o: [diffs[i].o],
-                            m: [diffs[i].m]
-                        };
-                    }
-                }
-                groupedDiffs.push(currentGroup); // Đẩy dòng cuối cùng vào mảng
-            }
-            // -----------------------------------------------------------------
-
-            // Render giao diện
-            const resultCard = document.getElementById('diffResultCard');
-            resultCard.style.display = 'block';
-
-            let patchText = '';
-            const tbody = document.getElementById('diffTableBody');
-            tbody.innerHTML = '';
-
-            if (groupedDiffs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--success);">2 file giống nhau 100% ✓</td></tr>';
-            } else {
-                const frag = document.createDocumentFragment();
-                groupedDiffs.forEach((g, i) => {
-                    // Căn lề số 0 cho Offset cho giống hình (ví dụ: 0x00000068)
-                    const ho = '0x' + g.off.toString(16).toUpperCase().padStart(8, '0');
-                    
-                    // Chuyển mảng byte thành chuỗi Hex có dấu cách (vd: "5F 5F 54 45")
-                    const ogHex = g.o.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-                    const mdHex = g.m.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-
-                    // Tạo chuỗi Text (bỏ vào textarea để copy nhanh)
-                    patchText += ho + ': ' + mdHex + ' // Gốc: ' + ogHex + '\n';
-
-                    // Dịch mã Hex sang ASCII (Chỉ lấy ký tự đọc được từ 32 đến 126, còn lại thay bằng dấu chấm)
-                    const asciiStr = g.m.map(b => (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.').join(' ');
-
-                    // Gắn vào bảng
-                    const tr = document.createElement('tr');
-                    tr.innerHTML =
-                        '<td>' + (i + 1) + '</td>' +
-                        '<td style="color:var(--accent); font-family:var(--font-mono);">' + ho + '</td>' +
-                        '<td><span class="badge badge-orig">' + ogHex + '</span></td>' +
-                        '<td><span class="badge badge-mod">' + mdHex + '</span></td>' +
-                        '<td style="color:var(--text-muted); font-family:var(--font-mono); font-weight:600;">' + esc(asciiStr) + '</td>';
-                    frag.appendChild(tr);
-                });
-                tbody.appendChild(frag);
-            }
-
-            document.getElementById('leakedTextarea').value = patchText;
-            document.getElementById('diffStatsBadge').textContent = 'Đã gộp thành ' + groupedDiffs.length + ' dòng';
-            log('log-diff', '✅ Hoàn tất! Quét thấy ' + diffs.length + ' byte khác biệt, gộp thành ' + groupedDiffs.length + ' block.', 'success');
-
-        } catch (e) {
-            log('log-diff', 'Lỗi: ' + e.message, 'error');
-        }
-        btn.disabled = false;
-    });
-
-    document.getElementById('btnCopyLeak').addEventListener('click', () => {
-        const txt = document.getElementById('leakedTextarea').value;
-        if (!txt) return;
-        navigator.clipboard.writeText(txt).then(() => showToast('✓ Đã copy patch!'));
-    });
-
-    document.getElementById('btnSendToPatcher').addEventListener('click', () => {
-        const txt = document.getElementById('leakedTextarea').value;
-        if (!txt) return;
-        document.getElementById('patchInput').value = txt;
-        document.querySelector('.tab-btn[data-tab="patcher"]').click();
-        showToast('✓ Đã chuyển sang tab Vá Hex!');
-    });
-
-    // ==========================================
-    // TAB 3: ZIP/IPA STRUCTURE COMPARE
-    // ==========================================
-    let ipaOrigFile = null, ipaModFile = null;
-
-    setupDropZone('dz-ipa-orig', 'fi-ipa-orig', 'info-ipa-orig', f => {
-        ipaOrigFile = f;
-        if (ipaModFile) document.getElementById('ipaDiffBtn').disabled = false;
-    });
-    setupDropZone('dz-ipa-mod', 'fi-ipa-mod', 'info-ipa-mod', f => {
-        ipaModFile = f;
-        if (ipaOrigFile) document.getElementById('ipaDiffBtn').disabled = false;
-    });
-
-    document.getElementById('ipaDiffBtn').addEventListener('click', async () => {
-        const btn = document.getElementById('ipaDiffBtn');
-        btn.disabled = true;
-        log('log-ipa', 'Đang đọc cấu trúc file nén...', 'info');
-
-        try {
-            if (typeof JSZip === 'undefined') throw new Error('Thư viện JSZip chưa được tải.');
-
-            const [zO, zM] = await Promise.all([
-                JSZip.loadAsync(ipaOrigFile),
-                JSZip.loadAsync(ipaModFile)
-            ]);
-
-            const origFiles = {};
-            const modFiles = {};
-
-            zO.forEach((path, entry) => { if (!entry.dir) origFiles[path] = entry; });
-            zM.forEach((path, entry) => { if (!entry.dir) modFiles[path] = entry; });
-
-            const tbody = document.getElementById('ipaTableBody');
-            tbody.innerHTML = '';
-            const frag = document.createDocumentFragment();
-            let count = 0;
-
-            for (const path in origFiles) {
-                const fO = origFiles[path];
-                const fM = modFiles[path];
-
-                if (!fM) {
-                    count++;
-                    const tr = document.createElement('tr');
-                    tr.innerHTML =
-                        '<td>' + count + '</td>' +
-                        '<td><span class="badge badge-removed">− Xóa</span></td>' +
-                        '<td style="color:var(--text-secondary); font-family:var(--font-mono); font-size:0.78rem;">' + esc(path) + '</td>' +
-                        '<td>' + fmtSize(fO._data ? fO._data.uncompressedSize : 0) + '</td>' +
-                        '<td>—</td>';
-                    frag.appendChild(tr);
+                let base64Data, mimeType;
+                if (currentFile.type.startsWith('video/')) {
+                    const audioData = await extractAudioFromVideo(currentFile);
+                    base64Data = audioData.base64; mimeType = audioData.mimeType;
                 } else {
-                    const origData = await fO.async('uint8array');
-                    const modData = await fM.async('uint8array');
-                    let differs = origData.length !== modData.length;
-                    if (!differs) {
-                        for (let i = 0; i < origData.length; i++) {
-                            if (origData[i] !== modData[i]) { differs = true; break; }
-                        }
-                    }
-                    if (differs) {
-                        count++;
-                        const tr = document.createElement('tr');
-                        tr.innerHTML =
-                            '<td>' + count + '</td>' +
-                            '<td><span class="badge badge-modified">✎ Sửa</span></td>' +
-                            '<td style="color:var(--text-secondary); font-family:var(--font-mono); font-size:0.78rem;">' + esc(path) + '</td>' +
-                            '<td>' + fmtSize(origData.length) + '</td>' +
-                            '<td>' + fmtSize(modData.length) + '</td>';
-                        frag.appendChild(tr);
-                    }
-                    delete modFiles[path];
+                    base64Data = await fileToBase64(currentFile); mimeType = currentFile.type;
                 }
-            }
 
-            for (const path in modFiles) {
-                const fM = modFiles[path];
-                const data = await fM.async('uint8array');
-                count++;
-                const tr = document.createElement('tr');
-                tr.innerHTML =
-                    '<td>' + count + '</td>' +
-                    '<td><span class="badge badge-added">+ Thêm</span></td>' +
-                    '<td style="color:var(--text-secondary); font-family:var(--font-mono); font-size:0.78rem;">' + esc(path) + '</td>' +
-                    '<td>—</td>' +
-                    '<td>' + fmtSize(data.length) + '</td>';
-                frag.appendChild(tr);
-            }
-
-            if (count === 0) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="5" style="text-align:center; color:var(--success);">2 file giống nhau 100% ✓</td>';
-                frag.appendChild(tr);
-            }
-
-            tbody.appendChild(frag);
-            document.getElementById('ipaResultCard').style.display = 'block';
-            document.getElementById('ipaStatsBadge').textContent = count + ' thay đổi';
-            log('log-ipa', '✅ Hoàn tất! ' + count + ' điểm khác biệt.', 'success');
-
-        } catch (e) {
-            log('log-ipa', 'Lỗi đọc ZIP: ' + e.message, 'error');
-        }
-        btn.disabled = false;
-    });
-
-    // ==========================================
-    // TAB 4: SEARCH & REPLACE
-    // ==========================================
-    let searchFile = null;
-
-    setupDropZone('dz-search', 'fi-search', 'info-search', f => {
-        searchFile = f;
-        document.getElementById('btnOnlySearch').disabled = false;
-        document.getElementById('btnReplaceExport').disabled = false;
-    });
-
-    async function runSearchReplace(doReplace) {
-        if (!searchFile) return;
-        const searchStr = document.getElementById('searchInput').value;
-        const replaceStr = document.getElementById('replaceInput').value;
-        const padMethod = document.getElementById('padMethod').value;
-
-        if (!searchStr) {
-            showToast('⚠ Nhập text cần tìm!');
-            return;
-        }
-
-        const btnSearch = document.getElementById('btnOnlySearch');
-        const btnReplace = document.getElementById('btnReplaceExport');
-        btnSearch.disabled = true;
-        btnReplace.disabled = true;
-        document.getElementById('searchResultCard').style.display = 'none';
-
-        const enc = new TextEncoder();
-        const searchBytes = enc.encode(searchStr);
-        let replaceBytes = doReplace ? enc.encode(replaceStr) : new Uint8Array(0);
-
-        if (doReplace) {
-            if (replaceBytes.length > searchBytes.length) {
-                replaceBytes = replaceBytes.slice(0, searchBytes.length);
-                log('log-search', '⚠ Text thay thế dài hơn → đã cắt bớt.', 'warn');
-            } else if (replaceBytes.length < searchBytes.length) {
-                const padded = new Uint8Array(searchBytes.length);
-                padded.set(replaceBytes);
-                const padByte = padMethod === 'null' ? 0x00 : 0x20;
-                for (let k = replaceBytes.length; k < searchBytes.length; k++) padded[k] = padByte;
-                replaceBytes = padded;
-            }
-        }
-
-        let totalFound = 0;
-        const tbody = document.getElementById('searchTableBody');
-        tbody.innerHTML = '';
-        const frag = document.createDocumentFragment();
-
-        log('log-search', 'Đang quét "' + searchStr + '"...', 'info');
-
-        try {
-            let isZip = false, zip;
-            try { zip = await JSZip.loadAsync(searchFile); isZip = true; } catch (e) { }
-
-            if (isZip) {
-                const paths = Object.keys(zip.files).filter(p => !zip.files[p].dir);
-                for (const path of paths) {
-                    const fileData = await zip.file(path).async('uint8array');
-                    const offsets = findAllOccurrences(fileData, searchBytes);
-
-                    if (offsets.length > 0) {
-                        offsets.forEach(off => {
-                            totalFound++;
-                            const tr = document.createElement('tr');
-                            tr.innerHTML =
-                                '<td>' + totalFound + '</td>' +
-                                '<td style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-secondary);">' + esc(path) + '</td>' +
-                                '<td style="color:var(--accent);">0x' + off.toString(16).toUpperCase() + '</td>' +
-                                '<td><span class="badge badge-found">Found</span></td>';
-                            frag.appendChild(tr);
-                        });
-
-                        if (doReplace) {
-                            const modData = new Uint8Array(fileData);
-                            offsets.forEach(off => {
-                                for (let b = 0; b < replaceBytes.length; b++) modData[off + b] = replaceBytes[b];
-                            });
-                            zip.file(path, modData);
-                        }
-                    }
-                    await new Promise(r => setTimeout(r, 0));
-                }
-                if (doReplace && totalFound > 0) {
-                    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-                    downloadBlob(blob, 'Modded_' + searchFile.name);
-                    log('log-search', '✅ Đã thay thế và tải file!', 'success');
-                }
-            } else {
-                const buffer = new Uint8Array(await readAsArrayBuffer(searchFile));
-                const offsets = findAllOccurrences(buffer, searchBytes);
-
-                offsets.forEach(off => {
-                    totalFound++;
-                    const tr = document.createElement('tr');
-                    tr.innerHTML =
-                        '<td>' + totalFound + '</td>' +
-                        '<td style="color:var(--text-muted);">[File gốc]</td>' +
-                        '<td style="color:var(--accent);">0x' + off.toString(16).toUpperCase() + '</td>' +
-                        '<td><span class="badge badge-found">Found</span></td>';
-                    frag.appendChild(tr);
+                // GỬI QUA HEADER: Chìa khóa để khắc phục lỗi OAuth
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': apiKey
+                    },
+                    body: JSON.stringify({ 
+                        contents: [{ 
+                            parts: [
+                                { text: "Hãy nghe và chuyển đoạn âm thanh này thành văn bản tiếng Việt chi tiết." }, 
+                                { inlineData: { mimeType: mimeType, data: base64Data } }
+                            ] 
+                        }] 
+                    })
                 });
-
-                if (doReplace && totalFound > 0) {
-                    offsets.forEach(off => {
-                        for (let b = 0; b < replaceBytes.length; b++) buffer[off + b] = replaceBytes[b];
-                    });
-                    downloadBlob(new Blob([buffer]), 'Modded_' + searchFile.name);
-                    log('log-search', '✅ Đã thay thế và tải file!', 'success');
-                }
-            }
-
-            if (totalFound === 0) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="4" style="text-align:center; color:var(--text-muted);">Không tìm thấy</td>';
-                frag.appendChild(tr);
-            }
-
-            tbody.appendChild(frag);
-            document.getElementById('searchResultCard').style.display = 'block';
-            document.getElementById('searchStatsBadge').textContent = 'Tổng: ' + totalFound + ' vị trí';
-            log('log-search', 'Hoàn tất! Tìm thấy ' + totalFound + ' kết quả.', 'info');
-
-        } catch (e) {
-            log('log-search', 'Lỗi: ' + e.message, 'error');
+                
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error.message);
+                
+                showResult(data.candidates[0].content.parts[0].text);
+                showToast("Phân tích hoàn tất!", "success");
+            } catch (error) {
+                showToast("Lỗi xử lý: " + error.message, "error");
+                console.error(error);
+            } finally { setLoading(false); }
         }
 
-        btnSearch.disabled = false;
-        btnReplace.disabled = false;
-    }
-
-    document.getElementById('btnOnlySearch').addEventListener('click', () => runSearchReplace(false));
-    document.getElementById('btnReplaceExport').addEventListener('click', () => runSearchReplace(true));
-
-    // ==========================================
-    // TAB 5: DEEP ANALYZER
-    // ==========================================
-    let analyzerFile = null;
-
-    setupDropZone('dz-analyzer', 'fi-analyzer', 'info-analyzer', f => {
-        analyzerFile = f;
-        document.getElementById('btnAnalyze').disabled = false;
-    });
-
-    const SUSPICIOUS_KW = ['anti', 'cheat', 'guard', 'protect', 'ssl', 'cert', 'log', 'tracker', 'firebase', 'crashlytics', 'jailbreak', 'root', 'tamper', 'hook', 'frida', 'xposed', 'magisk'];
-    const CORE_EXT = new Set(['dll', 'so', 'dylib', 'framework', 'exe', 'bin']);
-    const CONFIG_EXT = new Set(['plist', 'xml', 'json', 'yaml', 'yml', 'ini', 'cfg']);
-    const MEDIA_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'mp3', 'wav', 'ogg', 'mp4', 'ttf', 'otf', 'obj', 'fbx', 'svg']);
-
-    document.getElementById('btnAnalyze').addEventListener('click', async () => {
-        if (!analyzerFile) return;
-        const btn = document.getElementById('btnAnalyze');
-        btn.disabled = true;
-        document.getElementById('analyzerDashboard').style.display = 'none';
-        document.getElementById('log-analyzer').innerHTML = '';
-        log('log-analyzer', 'Khởi động bộ quét...', 'info');
-
-        try {
-            if (typeof JSZip === 'undefined') throw new Error('Thư viện JSZip chưa tải.');
-            const zip = await JSZip.loadAsync(analyzerFile);
-            const stats = { total: 0, core: 0, config: 0, media: 0, suspicious: 0 };
-
-            const analysisTable = document.getElementById('analyzerTableBody');
-            analysisTable.innerHTML = '';
-            const tableFrag = document.createDocumentFragment();
-
-            const suspList = document.getElementById('suspiciousList');
-            suspList.innerHTML = '';
-            const suspFrag = document.createDocumentFragment();
-
-            const paths = Object.keys(zip.files).filter(p => !zip.files[p].dir);
-
-            for (const path of paths) {
-                const entry = zip.files[path];
-                stats.total++;
-
-                const fileName = path.split('/').pop().toLowerCase();
-                const ext = fileName.includes('.') ? fileName.split('.').pop() : '';
-
-                let fileSize = 0;
-                try {
-                    const data = await entry.async('uint8array');
-                    fileSize = data.length;
-                } catch (e) {
-                    fileSize = entry._data ? entry._data.uncompressedSize : 0;
-                }
-
-                let typeBadge, analysis, isCore = false;
-
-                if (CORE_EXT.has(ext) || fileName === 'unityframework' || fileName.includes('il2cpp')) {
-                    stats.core++;
-                    isCore = true;
-                    typeBadge = '<span class="badge badge-core">Core</span>';
-                    analysis = 'File biên dịch chính.';
-                } else if (CONFIG_EXT.has(ext)) {
-                    stats.config++;
-                    typeBadge = '<span class="badge badge-config">Config</span>';
-                    analysis = 'File cấu hình.';
-                } else if (MEDIA_EXT.has(ext)) {
-                    stats.media++;
-                    typeBadge = '<span class="badge badge-media">Media</span>';
-                    analysis = 'Tài nguyên đồ họa/âm thanh.';
-                } else {
-                    typeBadge = '<span class="badge badge-data">Data</span>';
-                    analysis = 'Dữ liệu chung.';
-                }
-
-                const isSuspicious = SUSPICIOUS_KW.some(kw => path.toLowerCase().includes(kw));
-                if (isSuspicious) {
-                    stats.suspicious++;
-                    typeBadge = '<span class="badge badge-risk">⚠ Rủi Ro</span>';
-                    analysis = 'Đáng ngờ! Chứa từ khóa nhạy cảm.';
-
-                    const li = document.createElement('li');
-                    li.innerHTML = '<span class="file-name">' + esc(fileName) + '</span><br><span class="file-path">' + esc(path) + '</span>';
-                    suspFrag.appendChild(li);
-                }
-
-                if (isCore || isSuspicious || ['info.plist', 'androidmanifest.xml'].includes(fileName)) {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML =
-                        '<td>' + typeBadge + '</td>' +
-                        '<td style="color:var(--accent); font-family:var(--font-mono); font-size:0.78rem;">' + esc(path) + '</td>' +
-                        '<td>' + fmtSize(fileSize) + '</td>' +
-                        '<td style="font-size:0.8rem; color:var(--text-secondary);">' + analysis + '</td>';
-                    tableFrag.appendChild(tr);
-                }
-            }
-
-            document.getElementById('anaTotalFiles').textContent = stats.total.toLocaleString();
-            document.getElementById('anaCoreFiles').textContent = stats.core.toLocaleString();
-            document.getElementById('anaConfigFiles').textContent = stats.config.toLocaleString();
-            document.getElementById('anaMediaFiles').textContent = stats.media.toLocaleString();
-
-            if (suspFrag.children.length === 0) {
-                const li = document.createElement('li');
-                li.className = 'clean';
-                li.textContent = '✓ Sạch sẽ. Không phát hiện file giám sát.';
-                suspFrag.appendChild(li);
-            }
-            suspList.appendChild(suspFrag);
-
-            if (tableFrag.children.length === 0) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td colspan="4" style="text-align:center; color:var(--text-muted);">Không có dữ liệu.</td>';
-                tableFrag.appendChild(tr);
-            }
-            analysisTable.appendChild(tableFrag);
-
-            document.getElementById('analyzerDashboard').style.display = 'flex';
-            log('log-analyzer', 'Hoàn tất! ' + stats.total + ' file, ' + stats.suspicious + ' cảnh báo.', 'success');
-
-        } catch (e) {
-            log('log-analyzer', 'Lỗi: ' + e.message, 'error');
+        async function processLink() {
+            const url = document.getElementById('linkInput').value.trim();
+            if (!url) return showToast("Vui lòng nhập đường link!", "warning");
+            
+            const apiKey = getActiveApiKey();
+            const backend = getBackendUrl();
+            
+            setLoading(true, "Máy chủ đang trích xuất Media...");
+            try {
+                const response = await fetch(`${backend}/api/process-link`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, api_key: apiKey, model: DEFAULT_MODEL })
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    showResult(data.text);
+                    showToast("Trích xuất thành công!", "success");
+                } else { throw new Error(data.detail || "Không thể xử lý từ máy chủ."); }
+            } catch (error) {
+                showToast("Lỗi Server: " + error.message, "error");
+            } finally { setLoading(false); }
         }
-        btn.disabled = false;
-    });
 
-})();
-</script>
+        async function processRewrite() {
+            const text = document.getElementById('rewriteInput').value.trim();
+            if (!text) return showToast("Vui lòng nhập văn bản!", "warning");
+            
+            const apiKey = getActiveApiKey();
+            setLoading(true, "AI đang nâng cấp văn bản...");
+            try {
+                // GỬI QUA HEADER
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': apiKey
+                    },
+                    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Viết lại đoạn văn sau cho trôi chảy, sửa lỗi chính tả, giữ nguyên ý nghĩa gốc:\n\n" + text }] }] })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+                
+                showResult(data.candidates[0].content.parts[0].text);
+                showToast("Nâng cấp thành công!", "success");
+            } catch (error) {
+                showToast("Lỗi xử lý: " + error.message, "error");
+            } finally { setLoading(false); }
+        }
 
+        async function processVoiceClone() {
+            const text = document.getElementById('cloneTextInput').value.trim();
+            if (!currentVoiceFile) return showToast("Vui lòng tải lên file mẫu giọng nói!", "warning");
+            if (!text) return showToast("Vui lòng nhập nội dung cần đọc!", "warning");
+
+            setLoading(true, "Đang đồng bộ hóa mẫu giọng...");
+            setTimeout(() => {
+                setLoading(false);
+                showResult(`[CHỨC NĂNG VOICE CLONE: Phiên bản Web HTML hiện tại chỉ hỗ trợ mô phỏng do giới hạn của Google API]\n\nNội dung bạn muốn tổng hợp:\n"${text}"\n\n(Để chức năng này hoạt động thực sự, cần nâng cấp kết nối với ElevenLabs API).`);
+                showToast("Đã ghi nhận yêu cầu Voice Clone!", "success");
+            }, 2000);
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        async function extractAudioFromVideo(file) {
+            const buffer = await file.arrayBuffer();
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await ctx.decodeAudioData(buffer);
+            const targetRate = 16000; 
+            const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * targetRate, targetRate);
+            const source = offlineCtx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(offlineCtx.destination);
+            source.start(0);
+            const rendered = await offlineCtx.startRendering();
+            
+            const len = rendered.length * 2 + 44;
+            const view = new DataView(new ArrayBuffer(len));
+            let offset = 0;
+            const writeStr = (str) => { for(let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i)); offset += str.length; };
+            writeStr('RIFF'); view.setUint32(offset, len-8, true); offset += 4; writeStr('WAVEfmt '); view.setUint32(offset, 16, true); offset += 4;
+            view.setUint16(offset, 1, true); offset += 2; view.setUint16(offset, 1, true); offset += 2;
+            view.setUint32(offset, targetRate, true); offset += 4; view.setUint32(offset, targetRate*2, true); offset += 4;
+            view.setUint16(offset, 2, true); offset += 2; view.setUint16(offset, 16, true); offset += 2;
+            writeStr('data'); view.setUint32(offset, len-offset-4, true); offset += 4;
+            const data = rendered.getChannelData(0);
+            for(let i=0; i<data.length; i++, offset+=2) {
+                let s = Math.max(-1, Math.min(1, data[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+            const wavBlob = new Blob([view], {type: 'audio/wav'});
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(wavBlob);
+                reader.onload = () => resolve({ base64: reader.result.split(',')[1], mimeType: 'audio/wav' });
+            });
+        }
+
+        function copyResult() {
+            const text = document.getElementById('resultText');
+            text.select(); document.execCommand('copy');
+            showToast("Đã chép vào khay nhớ tạm!", "success");
+        }
+
+        const synth = window.speechSynthesis;
+        function toggleSpeech() {
+            const btn = document.getElementById('btnSpeak');
+            if (synth.speaking) {
+                synth.cancel();
+                btn.innerHTML = '<i class="fa-solid fa-volume-high text-blue-400"></i> Nghe';
+            } else {
+                const text = document.getElementById('resultText').value;
+                if (!text) return;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'vi-VN';
+                utterance.onend = () => { btn.innerHTML = '<i class="fa-solid fa-volume-high text-blue-400"></i> Nghe'; };
+                synth.speak(utterance);
+                btn.innerHTML = '<i class="fa-solid fa-stop text-red-400"></i> Dừng';
+            }
+        }
+
+        async function downloadAudio() {
+            const text = document.getElementById('resultText').value.trim();
+            if (!text) return;
+            showToast("Đang chuẩn bị file MP3...", "info");
+            try {
+                const res = await fetch(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=${encodeURIComponent(text.slice(0, 200))}`);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = 'Audio_Result.mp3'; a.click();
+                showToast("Đã tải xuống file MP3!", "success");
+            } catch(e) { showToast("Lỗi tải xuống audio.", "error"); }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let style = "bg-slate-800 border-slate-700 text-white", icon = "fa-info-circle text-blue-400";
+            if(type === "success") { style = "bg-emerald-900/90 border-emerald-500/50 text-emerald-100"; icon = "fa-check-circle text-emerald-400"; }
+            if(type === "error") { style = "bg-red-900/90 border-red-500/50 text-red-100"; icon = "fa-triangle-exclamation text-red-400"; }
+            if(type === "warning") { style = "bg-amber-900/90 border-amber-500/50 text-amber-100"; icon = "fa-bell text-amber-400"; }
+            
+            toast.className = `px-4 md:px-5 py-3 rounded-xl shadow-2xl border flex items-center gap-3 transform translate-x-10 opacity-0 transition-all duration-300 pointer-events-auto backdrop-blur-md font-medium text-xs md:text-sm max-w-[90vw] md:max-w-md ${style}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-base md:text-lg flex-shrink-0"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => { toast.classList.remove('translate-x-10', 'opacity-0'); }, 10);
+            setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-10'); setTimeout(() => toast.remove(), 300); }, 5000);
+        }
+    </script>
 </body>
 </html>
