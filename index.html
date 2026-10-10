@@ -474,14 +474,14 @@
             const apiKey = getActiveApiKey();
             setLoading(true, "AI đang nâng cấp văn bản...");
             try {
-                // GỬI QUA HEADER
+                // Đã cập nhật Prompt Yêu cầu AI CHỈ TRẢ VỀ kết quả, không thêm mô tả
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
                         'x-goog-api-key': apiKey
                     },
-                    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Viết lại đoạn văn sau cho trôi chảy, sửa lỗi chính tả, giữ nguyên ý nghĩa gốc:\n\n" + text }] }] })
+                    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Viết lại đoạn văn sau cho trôi chảy, sửa lỗi chính tả, giữ nguyên ý nghĩa gốc. LƯU Ý QUAN TRỌNG: Chỉ trả về duy nhất kết quả đã viết lại, tuyệt đối KHÔNG thêm câu chào hỏi, KHÔNG giải thích, KHÔNG chú thích những thay đổi:\n\n" + text }] }] })
                 });
                 const data = await response.json();
                 if (data.error) throw new Error(data.error.message);
